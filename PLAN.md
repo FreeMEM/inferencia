@@ -1,150 +1,150 @@
 # Inferencia: plan
 
-Inferencia es un entorno de desarrollo para Dash que corre en el propio Amiga:
-- MUI 5, moderno y con fondo negro.
-- Editor de código con colores.
-- Compilar y ejecutar desde el propio entorno.
-- Depurador paso a paso.
-- Editor visual de ventanas (`.dashui`).
-- Un asistente que programa contigo a través de OpenRouter.
+Inferencia lleva la IA al Amiga. Es un programa MUI con el que hablas con un modelo, que actúa sobre el sistema
+operativo igual que Claude Code en un PC:
+- Lee y cambia ficheros.
+- Ejecuta órdenes del Shell.
+- Manda órdenes ARexx a otros programas.
+- Mira el sistema.
 
-Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon. Eso implica:
-- Nada de `@native`, porque Dash 2.0 no lo admite en programas de usuario. Lo que falte se hace con
-  builtins o con el propio lenguaje.
-- Se compila con dashc, y dashc es también el compilador que usa el IDE dentro del Amiga.
+Siempre pide permiso antes de cambiar algo.
+
+Es un programa independiente y sirve para cualquier tarea, no solo para programar. Se integra por ARexx con el IDE
+de Dash, que es otra aplicación (plan aparte, `~/Projects/ide-dash/PLAN.md`), y con cualquier otro programa.
+
+Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon:
+- Nada de `@native`, porque Dash 2.0 no lo admite en programas de usuario. Lo que falte va a Dash como builtin
+  o como módulo de `lib/`.
 - Depende de que dashc tenga diccionarios, `import`, textos, red, TLS y MUI (tareas D3, D5 y D6 de
   `docs/DASHC_LOOP.md`). Si alguna falta, se empieza con `./dash` y se pasa después a dashc.
 
 ## Qué necesita la máquina
 
 - 68020 o mejor, porque MUI 5 y AmiSSL 5 lo piden.
-- MUI 5.
-- Para el asistente: una pila TCP/IP, AmiSSL 5 y el reloj en hora, porque AmiSSL comprueba las fechas del
-  certificado. También una clave de OpenRouter.
+- MUI 5, una pila TCP/IP y AmiSSL 5.
+- El reloj en hora, porque AmiSSL comprueba las fechas del certificado.
+- Una clave de OpenRouter, o un modelo en un PC de casa (Ollama, LM Studio) por HTTP, sin TLS.
 
 ## La ventana
 
 ```
-+--------------------------------------------------------------------------------+
-| Inferencia: Work:juego                                                   [][]  |
-+--------------------------------------------------------------------------------+
-| [Compilar] [Ejecutar] [Depurar] [Paso] [Entrar] [Salir] [Seguir]               |
-+--------------+-----------------------------------------+-----------------------+
-| Proyecto     | main.dash | ventana.dashui | red.dash  | Asistente             |
-|  main.dash   |  45   total = lista.count               | Tú: no termina el     |
-|  red.dash    |  46   j = 0                             | bucle                 |
-|  ventana.ui  |  47 ● while j < total                   | ● Leer main.dash      |
-|              |  48 >     procesar(lista[j])            | La condición usa i... |
-| Variables    |  49       j = j + 1                     | ● Editar main.dash    |
-|  j      3    |  50   end                               |  - while i < total    |
-|  total  10   |                                         |  + while j < total    |
-|              |                                         | [Sí] [No] [Siempre]   |
-+--------------+-----------------------------------------+-----------------------+
-| Salida: compilado en 1,2 segundos, 0 avisos                                    |
-+--------------------------------------------------------------------------------+
++--------------------------------------------------------------------+
+| Inferencia                                                    [][] |
++--------------------------------------------------------------------+
+| Modelo [anthropic/claude-sonnet-5.5 v]   12.400 tokens · 0,03 $    |
++--------------------------------------------------------------------+
+| Tú: ¿por qué no arranca la red al encender?                        |
+|                                                                    |
+| ● Leer S:User-Startup                                              |
+| ● Orden  ShowNetStatus                                             |
+|                                                                    |
+| User-Startup arranca Roadshow antes de montar la tarjeta. Muevo    |
+| AddNetInterface detrás de la línea del driver:                     |
+|                                                                    |
+| ● Editar S:User-Startup                                            |
+|   - AddNetInterface DEVS:NetInterfaces/wifi                        |
+|   + (dos líneas más abajo)                                         |
+|                         [ Sí ]  [ No ]  [ Siempre ]                |
++--------------------------------------------------------------------+
+| [ escribe aquí...                                 ] [Enviar][Parar]|
++--------------------------------------------------------------------+
 ```
 
-- **Fondo negro**: el editor, la salida y el asistente se dibujan sobre `mui_canvas`, así que sus colores
-  son los del IDE. Para el resto de la ventana se instalan unas preferencias de MUI propias del programa
-  (MUI las guarda por aplicación), con tema oscuro.
-- **Editor de código**: hecho sobre el canvas, porque Dash no tiene campo de varias líneas. Lleva colores
-  según la sintaxis de Dash, números de línea, puntos de parada, buscar y reemplazar, deshacer y varias
-  pestañas. Es la pieza más grande del IDE.
-- **Panel del proyecto**: los ficheros. Al depurar, también las variables y la pila de llamadas.
-- **Salida**: los errores de dashc. Con un clic se salta a la línea.
-- **Asistente**: un panel a la derecha que se puede ocultar. Se describe más abajo.
+- La conversación se dibuja sobre un `mui_canvas` con su `mui_scrollbar`.
+  - Las respuestas llegan en Markdown y se pasan a negrita, listas y código en Topaz.
+  - Los cambios se muestran con las líneas quitadas y las puestas en color.
+  - Se aprovecha lo que ya hace Tachyon para maquetar texto.
+- Se escribe en un `mui_string` de una línea. Varias líneas, más adelante.
+- Los permisos van en la propia conversación, con "Sí", "No" y "Siempre". Así se ve la orden o el cambio
+  completo antes de aceptar.
+- Para que no se congele, la petición avanza por trozos (`http_avanzar` con
+  `mui_wait_event_signals(net_signal())`), como en Tachyon. "Parar" la corta.
+- En el menú están el proveedor, la clave y el modelo, guardar y cargar la conversación, empezar de cero y
+  el directorio de trabajo.
 
-## Editor visual de ventanas (`.dashui`)
-
-Abrir un `.dashui` muestra una pestaña con tres partes:
-- El árbol de objetos.
-- La ventana de verdad, construida con MUI a partir del JSON mientras se edita. Como el IDE ya es un
-  programa MUI, la vista previa es exacta, cosa que el editor de VS Code no puede dar.
-- Las propiedades del objeto elegido.
-
-Usa el mismo formato que el editor de VS Code (`docs/MUI_EDITOR.md`), y los dos tienen que poder abrir los
-ficheros del otro. El asistente también puede leer y cambiar `.dashui`.
-
-## Depurador
-
-Ahora el depurador de Dash solo funciona en el emulador (`--debug`, `debug_break`, por uaelib). En un Amiga
-de verdad hace falta otro:
-- El IDE lanza el programa como proceso propio y recoge sus excepciones con `tc_TrapCode`, como ya hace el
-  runtime de Dash.
-- Los puntos de parada ponen una instrucción `TRAP` en la dirección de la línea.
-- El paso a paso usa el bit de traza del 68k.
-- dashc tiene que dar una tabla de líneas y direcciones y la posición de cada variable. Como dashc genera el
-  código 68k él mismo, esa información la controla. Hay que pedírsela.
-
-## Asistente (OpenRouter)
-
-Habla el formato de OpenAI Chat Completions, el de OpenRouter. Después vendrán Anthropic Messages, OpenAI,
-DeepSeek y Ollama o LM Studio en el PC de casa. Con un modelo local por HTTP no hace falta TLS.
-
-Los planes de suscripción (Claude Pro/Max) no se pueden usar fuera de Claude Code y claude.ai. El asistente
-funciona con clave y se paga por uso; OpenRouter tiene además algunos modelos gratis con límite diario.
-
-Herramientas:
+## Herramientas (lo que puede hacer en el sistema)
 
 | Herramienta | Qué hace | ¿Pide permiso? |
 |---|---|---|
 | `leer` | Lee un fichero, con un tope de tamaño | No |
 | `listar` | Lista un directorio | No |
-| `buscar` | Busca un texto en los ficheros del proyecto | No |
+| `buscar` | Busca un texto en los ficheros de un directorio | No |
 | `escribir` | Crea o sustituye un fichero entero | Sí |
 | `editar` | Cambia un trozo exacto de un fichero por otro | Sí |
-| `orden` | Ejecuta una línea del Shell y devuelve su salida y su código | Sí |
-| `compilar` | Compila con dashc y devuelve los errores | No |
+| `orden` | Ejecuta una línea del Shell y devuelve su salida y su código, con un tope de tiempo | Sí |
+| `arexx` | Manda una orden ARexx al puerto de un programa y devuelve el resultado | Sí |
+| `puertos` | Lista los puertos ARexx abiertos, para saber con qué programas puede hablar | No |
+| `sistema` | Memoria libre, versión del sistema, volúmenes, asignaciones y tareas en marcha | No |
+| `entorno` | Lee y cambia variables de `ENV:` | Leer no; cambiar sí |
+| `portapapeles` | Lee y escribe el portapapeles | Leer no; escribir sí |
 
-Al estar dentro del IDE:
-- Ve el fichero abierto y la selección.
-- Sus cambios aparecen en el editor y se pueden deshacer.
-- Puede compilar para comprobar lo que ha hecho.
+Hay una lista de órdenes y puertos que no piden permiso, configurable, como en Claude Code. "Siempre" añade a
+esa lista la orden que se acaba de aceptar.
 
-Para que no se congele, la petición avanza por trozos con `http_avanzar` y
-`mui_wait_event_signals(net_signal())`, como en Tachyon. "Parar" la corta.
+## ARexx
 
-Detalles del formato:
-- El historial solo crece y se reenvía entero. Con topes por herramienta y, cuando el proveedor lo permita,
-  caché de prompt.
-- Antes de usar la respuesta se mira por qué paró (`finish_reason`). Si una herramienta falla, se le
-  devuelve el error.
+Inferencia tiene su propio puerto, `INFERENCIA`:
+- `PREGUNTA "texto"`: hace la pregunta en la conversación y devuelve la respuesta.
+- `CONTEXTO fichero [desde hasta]`: añade a la conversación un fichero o unas líneas.
+- `NUEVA`: empieza una conversación nueva.
+- `MOSTRAR` y `OCULTAR`: la ventana.
 
-## Piezas que faltan en Dash
+Con eso, cualquier programa le puede preguntar. Desde el IDE de Dash: "explica esto", "arregla este error",
+con el fichero abierto y la selección. Si el IDE está abierto, Inferencia usa su puerto para abrir ficheros,
+aplicar cambios que se pueden deshacer y compilar.
 
-1. **JSON**: leer un texto JSON a un árbol y escribir un árbol a texto, con escapes y `\uXXXX`.
-2. **Ejecutar una orden y recoger su salida**: que espere, guarde la salida y devuelva el código de retorno,
-   con un tope de tiempo. `run_program` no espera y tira la salida.
-3. **Listar un directorio**: nombres, tamaños y si es directorio.
-4. **Leer una variable de entorno.**
-5. **Pasar `http.dash` y `red.dash` de Tachyon a `lib/` de Dash**, con POST y cabeceras propias.
-6. **Información de depuración en dashc**: líneas, direcciones y variables. Más adelante, una librería de
-   depuración para lanzar un programa, parar, ir paso a paso y leer su memoria.
-7. **Construir ventanas MUI desde un `.dashui` en tiempo de ejecución**, para la vista previa. Ahora el
-   `.dashui` se convierte a código al compilar.
+## Proveedores
+
+- **Primero, OpenRouter**, con el formato de OpenAI Chat Completions. Con una clave tienes cientos de modelos,
+  Claude incluido, y algunos gratis con límite diario.
+- **Ese mismo formato** sirve para OpenAI, DeepSeek, Groq, y Ollama o LM Studio en casa.
+- **Después, Anthropic Messages**, para la API de Claude directa.
+- Los planes de suscripción (Claude Pro/Max) no se pueden usar fuera de Claude Code y claude.ai.
+
+Detalles:
+- El historial solo crece y se reenvía entero. Lleva topes por herramienta y, cuando el proveedor lo
+  permita, caché de prompt.
+- Antes de usar la respuesta se mira por qué paró (`finish_reason`). Si una herramienta falla, se le devuelve
+  el error.
+
+## Piezas de Dash
+
+Encargadas a la sesión `dashc`. Hechas en la rama `ide-piezas`, todavía sin fusionar:
+1. JSON: `lib/json.dash`.
+2. Ejecutar una orden y recoger su salida: `run_capture`, `run_rc`, y la versión sin bloquear `run_start`.
+3. Listar un directorio: `dir_read` y `dir_entry_*`.
+4. Variables de entorno: `env_get` y `env_set`.
+
+Pendientes:
+5. `http.dash` y `red.dash` de Tachyon a `lib/` de Dash. Además, que un programa de fuera del repo de Dash
+   encuentre `lib/` al importar.
+6. **ARexx como cliente**: mandar una orden a un puerto y recoger el resultado y el código. Listar los
+   puertos públicos.
+7. **ARexx como servidor en MUI**: órdenes propias en el puerto de la aplicación MUI.
+8. **Información del sistema**: tareas en marcha, volúmenes y asignaciones. Las de Trasfondo, si ya están
+   como builtins.
 
 ## Fases
 
-- **F0. Prueba del asistente**: un "hola" a OpenRouter desde FS-UAE. Comprueba TLS, cabeceras, UTF-8 y tiempos.
-- **F1. El esqueleto del IDE**: la ventana oscura, el editor de código con colores, abrir, guardar, compilar
-  con dashc, ejecutar y saltar a los errores.
-- **F2. El asistente** en su panel, con las herramientas y los permisos.
-- **F3. El editor de `.dashui`** con vista previa en vivo.
-- **F4. El depurador**: puntos de parada, paso a paso, variables y pila.
-- **F5. Acabado**: proyectos, catálogos de idioma, el paquete `.lha` y la publicación en Aminet, la web y GitHub.
+- **F0**: un "hola" a OpenRouter desde FS-UAE. Comprueba TLS, cabeceras, UTF-8 y tiempos.
+- **F1**: la ventana con la conversación y las herramientas de ficheros y órdenes, con permisos. Es la
+  primera versión usable.
+- **F2**: ARexx (cliente, servidor y la herramienta `arexx`) y las herramientas de sistema, entorno y
+  portapapeles.
+- **F3**: memoria y coste. Topes, caché, guardar la conversación y resumir la conversación cuando crece.
+- **F4**: ver el texto mientras llega (streaming), entrada de varias líneas y más proveedores.
+- **F5**: catálogos de idioma, el paquete `.lha` y la publicación en Aminet, la web y GitHub.
 
 ## Pruebas
 
-- Para el asistente, un servidor falso en el PC (Python) que imita OpenRouter con respuestas grabadas, para
-  no gastar en cada prueba. Solo unas pocas pruebas a mano con la API de verdad.
-- El IDE, en FS-UAE con MUI 5 (`DASH_EMU_SYS_MUI`), con clics reales por `input.device` y capturas de pantalla.
+- Un servidor falso en el PC (Python) que imita OpenRouter con respuestas grabadas, para no gastar en cada
+  prueba. Solo unas pocas pruebas a mano con la API de verdad.
+- En FS-UAE con MUI 5 (`DASH_EMU_SYS_MUI`), con clics reales por `input.device` y capturas de pantalla.
 
 ## Riesgos
 
-- **Memoria**: cada petición del asistente reenvía todo el historial; además están el editor y el depurador.
-  Hay que medir cuánta RAM rápida necesita.
-- **Velocidad**:
-  - El editor tiene que dibujar rápido en un 68020 con muchos colores.
-  - El saludo de TLS de cada petición puede tardar segundos.
-- **Seguridad**: el modelo puede pedir órdenes que borren cosas. Por eso pregunta antes por defecto.
-- **Depurador**: es lo más delicado. Un fallo en el programa depurado no debe tumbar el IDE.
+- **Memoria**: cada petición reenvía todo el historial en JSON. Hay que medir cuánta RAM rápida necesita.
+- **Velocidad**: el saludo de TLS de cada petición puede tardar segundos en un 68020.
+- **Seguridad**: el modelo puede pedir órdenes que borren cosas o mandar ARexx a cualquier programa. Por eso
+  pregunta antes por defecto. Lo que hace queda en un registro.
+- **Certificados**: AmiSSL trae los suyos. Si caducan, falla la conexión.

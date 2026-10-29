@@ -1,10 +1,8 @@
 # Inferencia
 
-Un entorno de desarrollo para [Dash](https://github.com/FreeMEM/FreeMEMLang) que corre en el propio Amiga
-(AmigaOS 3, 68020 o mejor, MUI 5).
-
-Tendrá editor de código con colores, compilar y ejecutar, depurador paso a paso, editor visual de ventanas
-`.dashui` y un asistente que programa contigo a través de OpenRouter.
+La IA en el Amiga (AmigaOS 3, 68020 o mejor, MUI 5). Hablas con un modelo, a través de OpenRouter o de un
+modelo en tu red, y puede trabajar en tu sistema: leer y cambiar ficheros, ejecutar órdenes del Shell y mandar
+órdenes ARexx a otros programas. Siempre pide permiso antes de cambiar algo.
 
 Todavía no hay nada que usar: el proyecto está empezando. El plan está en [PLAN.md](PLAN.md).
 
