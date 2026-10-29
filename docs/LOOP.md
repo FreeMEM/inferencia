@@ -71,10 +71,12 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 
 ### Forja: hasta la primera versión usable
 
-- [ ] F1 Ventana oscura:
+- [x] F1 Ventana oscura:
   - Estructura del repo y `src/main.dash`.
   - Preferencias MUI propias con tema oscuro.
   - Disposición: proyecto, pestañas, salida y botones.
+- [ ] F1b Tema oscuro también en lo de MUI (botones, bordes de los grupos), cuando dashc entregue
+  `mui_set_background` (pieza 11, pedida el 2026-10-30).
 - [ ] F2 Editor de código en canvas:
   - Texto por líneas, cursor y teclado (con la tabla de teclas).
   - Selección con ratón y teclado, desplazamiento, deshacer y rehacer.
@@ -163,3 +165,11 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   menús de Forja y, si es de Dash, encargarlo a dashc. Prueba real (`REAL=nvidia/nemotron-3.5-lightning:free`):
   el modelo usó listar y leer en DH0:Prueba y contestó con los dos ficheros y el texto de la nota, con tildes.
   La clave no quedó en ningún temporal. Tras un "No" a una orden ya no sale "Salida".
+- 2026-10-30, F1: Forja con `src/main.dash`, `ventana.dashui` (botones, proyecto, balance, editor con barra,
+  salida), `tema.dash` (colores y fuentes), `editor.dash` (pestañas, números de línea, línea del cursor; solo
+  dibuja) y `paneles.dash` (ficheros .dash y .dashui del cajón, salida con colores). Los ficheros en UTF-8 de
+  un PC se pasan a Latin-1 al abrir y se recuerda para guardarlos igual. Captura en FS-UAE
+  (`tests/ventana.sh`): los lienzos en negro, la ñ bien. Los botones del depurador salen solo al depurar
+  (los nueve no caben en 640 píxeles y MUI añadía una barra para desplazar la ventana). MUI no deja poner
+  fondos desde Dash y unas prefs propias no se pueden escribir a mano: pedido a dashc `mui_set_background`
+  (pieza 11); queda F1b.
