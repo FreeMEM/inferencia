@@ -56,7 +56,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Conversación en `mui_canvas` con `mui_scrollbar`, línea de entrada, botones Enviar y Parar, y modelo.
   - La petición sin bloquear (`http_empezar_metodo` y `http_avanzar` con `mui_wait_event_signals`).
   - Prueba: captura y un intercambio contra el servidor falso.
-- [ ] I3 Maquetado de la conversación:
+- [x] I3 Maquetado de la conversación:
   - Ajuste de líneas, desplazamiento y rueda.
   - Markdown básico: párrafos, negrita, listas y código en Topaz.
   - Colores para el usuario, el modelo y las herramientas.
@@ -139,3 +139,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   barra se pone al final (en la captura el mando parece arriba) y la banda del usuario no se ve con 4 colores.
   emu_run escribe el Startup-Sequence en UTF-8 y el sistema no tiene `Copy`: la pregunta de prueba va en un
   fichero Latin-1 (`INFERENCIA_PRUEBA=@fichero`).
+- 2026-10-30, I3: `src/vista.dash` lee lo del modelo como Markdown (párrafos, negrita, cursiva, código, títulos,
+  listas con sangría, citas, bloques de código) una vez al añadirlo, y solo lo vuelve a partir al cambiar el
+  ancho. Texto en Helvetica 11 y código en Topaz 8, en la misma línea base. Con 4 colores, el usuario lleva una
+  raya azul a la izquierda (la banda solo si hay color para ella) y los bloques de código una raya. La barra
+  sigue a la vista con un tic de 300 ms (también al cambiar el tamaño). Comprobado en FS-UAE con capturas
+  (respuesta Markdown del servidor falso, `LINEA=n` para subir la vista): la barra queda al final. La rueda no
+  se ha probado en el emulador. Pendiente: elegir las fuentes en las preferencias (I10).

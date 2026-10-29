@@ -2,6 +2,7 @@
 # Inferencia con su ventana en FS-UAE, contra el OpenRouter falso, con capturas.
 #
 #   tests/ventana.sh DASH_DIR "pregunta" captura.png [segundos...]
+#   LINEA=0 tests/ventana.sh ...     # la vista sube a esa línea después de la respuesta
 #
 # DASH_DIR: el worktree de Dash 2.0 que compila (./dash y tools/emu_run.py). La pregunta se manda al abrir
 # (ENV:INFERENCIA_PRUEBA, en Latin-1 como en el Amiga) y el programa se cierra solo 15 segundos después de la
@@ -20,6 +21,7 @@ cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
   echo "C:SetEnv Inferencia/clave clave-falsa"
   echo "C:SetEnv Inferencia/modelo modelo/prueba"
   echo "SetEnv INFERENCIA_PRUEBA @DH0:Prueba/pregunta"
+  [ -z "$LINEA" ] || echo "SetEnv INFERENCIA_PRUEBA_LINEA $LINEA"
 } >> "$tmp/sys/S/Startup-Extra"
 # la pregunta en Latin-1, como la escribiría el Amiga (emu_run escribe el Startup-Sequence en UTF-8)
 mkdir -p "$tmp/sys/Prueba"

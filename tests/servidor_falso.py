@@ -2,7 +2,8 @@
 """Un OpenRouter falso para probar Inferencia sin gastar: contesta a POST /api/v1/chat/completions en el formato
 de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 
-- Sin herramientas en la petición: repite la pregunta.
+- Sin herramientas en la petición: repite la pregunta. Si la pregunta empieza por "MARKDOWN", contesta con un
+  texto de ejemplo en Markdown (para probar cómo se ve).
 - Con herramientas, si el último mensaje es del usuario y dice "LLAMA nombre {json}", pide esa herramienta con
   esos argumentos (varias si hay varias líneas así).
 - Con herramientas, si el último mensaje es el resultado de una: "Resultado de <id>: <contenido>".
@@ -12,6 +13,28 @@ de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 import json
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
+MARKDOWN = """Esto es un **párrafo** con `código` y una palabra en *cursiva*. Sigue un poco más para que se \
+parta en varias líneas al ancho de la ventana.
+
+## Pasos
+
+- Abre el **Shell** desde el Workbench.
+- Escribe `dir SYS:` y pulsa Intro.
+  - Una sublista, con su sangría.
+1. Primero, esto.
+2. Después, lo otro.
+
+```
+Main
+    Print "hola, Amiga"
+end
+```
+
+> Una cita, en cursiva.
+
+Y un párrafo final con una palabra muy larga: https://github.com/FreeMEM/inferencia/blob/main/PLAN.md"""
 
 
 class Falso(BaseHTTPRequestHandler):
@@ -28,6 +51,8 @@ class Falso(BaseHTTPRequestHandler):
             self._contestar(400, {"error": {"message": f"petición mal formada: {e}", "code": 400}})
             return
         mensaje = {"role": "assistant", "content": f"Recibido: «{pregunta}» ✓"}
+        if pregunta.startswith("MARKDOWN"):
+            mensaje["content"] = MARKDOWN
         fin = "stop"
         if peticion.get("tools"):
             if ultimo["role"] == "tool":

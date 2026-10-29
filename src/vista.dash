@@ -1,31 +1,62 @@
 # La conversación tal como se ve: bloques de texto (del usuario, del modelo, de las herramientas, avisos)
 # partidos en líneas al ancho de la zona y dibujados desde una línea.
 #
-#   vista_anadir(QUIEN_USUARIO, "hola")
+#   vista_anadir(QUIEN_MODELO, "Un **párrafo** con `código`")
 #   vista_dibujar(x, y, ancho, alto)       # desde la función de dibujo del canvas
 #   if vista_cambio_rango() ... mui_set_range(barra, vista_total(), vista_visibles())
+#
+# Lo del modelo se lee como Markdown: párrafos, **negrita**, *cursiva*, `código`, títulos (#), listas (-, *, 1.) y
+# bloques de código (```), que van en Topaz. Cada bloque se lee una vez al añadirlo; al cambiar el ancho solo se
+# vuelve a partir en líneas.
 
 const QUIEN_USUARIO = 1
 const QUIEN_MODELO = 2
 const QUIEN_HERRAMIENTA = 3
 const QUIEN_AVISO = 4
-const MARGEN = 8
+const MARGEN = 10
+const SANGRIA = 16
+
+const P_TEXTO = 0
+const P_TITULO = 1
+const P_CODIGO = 2
+const P_VACIO = 3
+
+const NEGRITA = 2
+const CURSIVA = 4
+
+struct Palabra
+    texto: String
+    estilo: Int       # para font_style: NEGRITA, CURSIVA
+    codigo: Bool      # en Topaz
+    espacio: Bool     # va separada de la anterior
+    ancho: Int        # en píxeles; -1 sin medir
+end
+
+struct Parrafo
+    tipo: Int         # P_TEXTO, P_TITULO, P_CODIGO, P_VACIO
+    sangria: Int      # nivel de lista (0: sin lista)
+    vineta: String    # "" sin viñeta, "*" un punto, "1." el número
+    palabras: [Palabra]
+end
 
 struct Bloque
     quien: Int
-    texto: String
+    parrafos: [Parrafo]
 end
 
 struct Linea
     quien: Int
-    texto: String
-    primera: Bool     # la primera línea de su bloque (lleva espacio encima)
+    tipo: Int
+    palabras: [Palabra]
+    sangria: Int      # en píxeles
+    vineta: String    # solo en la primera línea de un punto de lista
 end
 
 var vista_bloques: [Bloque] = []
 var vista_lineas: [Linea] = []
 var vista_primera: Int = 0          # la primera línea que se ve
 var vista_ancho_maquetado: Int = -1
+var vista_maquetados: Int = 0       # los bloques ya partidos en líneas
 var vista_alto_linea: Int = 10
 var vista_alto_zona: Int = 0
 var vista_rango_pendiente: Bool = false
@@ -36,10 +67,169 @@ var _pen_modelo: Int = 0
 var _pen_herramienta: Int = 0
 var _pen_aviso: Int = 0
 var _pen_banda: Int = 0
+var _pen_codigo: Int = 0
+var _pen_fondo_codigo: Int = 0
+var _fuente_texto: Int = 0
+var _fuente_codigo: Int = 0
+var _espacio_texto: Int = 4
+var _espacio_codigo: Int = 8
+var _base: Int = 8                  # la línea base común de las dos fuentes
+
+# --- Leer los bloques ---
+
+func _palabras_llanas(texto: String, estilo: Int) -> [Palabra]
+    var ps: [Palabra] = []
+    espacio = false
+    for w in str_split(texto, " ")
+        if w != ""
+            ps.push(Palabra(w, estilo, false, espacio, -1))
+        end
+        espacio = true
+    end
+    return ps
+end
+
+func _alternar(estilo: Int, bit: Int) -> Int
+    if (estilo & bit) != 0
+        return estilo - bit
+    end
+    return estilo + bit
+end
+
+# Las palabras de una línea de Markdown, con su estilo
+func _palabras_md(texto: String, estilo_base: Int) -> [Palabra]
+    var ps: [Palabra] = []
+    estilo = estilo_base
+    codigo = false
+    espacio = false
+    w = ""
+    n = texto.length
+    i = 0
+    while i < n
+        c = texto[i:i + 1]
+        marca = ""
+        if c == "`"
+            marca = "`"
+        elif not codigo and c == "*"
+            if texto[i:i + 2] == "**"
+                marca = "**"
+            elif (estilo & CURSIVA) != 0 or (i + 1 < n and texto[i + 1:i + 2] != " " and w == "")
+                marca = "*"
+            end
+        end
+        if marca != "" or c == " "
+            if w != ""
+                ps.push(Palabra(w, estilo, codigo, espacio, -1))
+                w = ""
+                espacio = false
+            end
+            if c == " "
+                espacio = true
+            elif marca == "`"
+                codigo = not codigo
+            elif marca == "**"
+                estilo = _alternar(estilo, NEGRITA)
+                i = i + 1
+            else
+                estilo = _alternar(estilo, CURSIVA)
+            end
+        else
+            w = w + c
+        end
+        i = i + 1
+    end
+    if w != ""
+        ps.push(Palabra(w, estilo, codigo, espacio, -1))
+    end
+    return ps
+end
+
+func _espacios_delante(s: String) -> Int
+    n = 0
+    while n < s.length and s[n:n + 1] == " "
+        n = n + 1
+    end
+    return n
+end
+
+# "12. algo" -> 3 (la posición del espacio); 0 si no es un punto numerado
+func _numerado(t: String) -> Int
+    i = 0
+    while i < t.length and i < 4 and str_find("0123456789", t[i:i + 1]) >= 0
+        i = i + 1
+    end
+    if i > 0 and t[i:i + 2] == ". "
+        return i + 1
+    end
+    return 0
+end
+
+func _leer_markdown(texto: String) -> [Parrafo]
+    var ps: [Parrafo] = []
+    en_codigo = false
+    vacio = false       # una línea en blanco que va antes del siguiente párrafo
+    for linea in str_split(str_replace(texto, "\t", "    "), "\n")
+        t = str_trim(linea)
+        if t == "" and not en_codigo
+            vacio = ps.length > 0
+            continue
+        end
+        if vacio
+            var pv: [Palabra] = []
+            ps.push(Parrafo(P_VACIO, 0, "", pv))
+            vacio = false
+        end
+        if str_starts(t, "```")
+            en_codigo = not en_codigo
+        elif en_codigo
+            var pc: [Palabra] = [Palabra(linea, 0, true, false, -1)]
+            ps.push(Parrafo(P_CODIGO, 0, "", pc))
+        elif str_starts(t, "#")
+            h = 0
+            while h < t.length and t[h:h + 1] == "#"
+                h = h + 1
+            end
+            ps.push(Parrafo(P_TITULO, 0, "", _palabras_md(str_trim(t[h:]), NEGRITA)))
+        else
+            nivel = _espacios_delante(linea) / 2 + 1
+            if nivel > 4
+                nivel = 4
+            end
+            num = _numerado(t)
+            if str_starts(t, "- ") or str_starts(t, "* ") or str_starts(t, "+ ")
+                ps.push(Parrafo(P_TEXTO, nivel, "*", _palabras_md(t[2:], 0)))
+            elif num > 0
+                ps.push(Parrafo(P_TEXTO, nivel, t[0:num], _palabras_md(t[num + 1:], 0)))
+            elif str_starts(t, "> ")
+                ps.push(Parrafo(P_TEXTO, 1, "", _palabras_md(t[2:], CURSIVA)))
+            else
+                ps.push(Parrafo(P_TEXTO, 0, "", _palabras_md(t, 0)))
+            end
+        end
+    end
+    return ps
+end
+
+func _leer_llano(texto: String, estilo: Int, prefijo: String) -> [Parrafo]
+    var ps: [Parrafo] = []
+    for linea in str_split(prefijo + texto, "\n")
+        ps.push(Parrafo(P_TEXTO, 0, "", _palabras_llanas(linea, estilo)))
+    end
+    return ps
+end
 
 func vista_anadir(quien: Int, texto: String)
-    vista_bloques.push(Bloque(quien, texto))
-    vista_ancho_maquetado = -1
+    var ps: [Parrafo] = []
+    if quien == QUIEN_MODELO
+        ps = _leer_markdown(texto)
+    elif quien == QUIEN_AVISO
+        ps = _leer_llano(texto, CURSIVA, "")
+    elif quien == QUIEN_HERRAMIENTA
+        ps = _leer_llano(texto, 0, "· ")
+    else
+        ps = _leer_llano(texto, 0, "")
+    end
+    vista_bloques.push(Bloque(quien, ps))
     vista_al_final = true
 end
 
@@ -47,7 +237,8 @@ func vista_limpiar()
     vista_bloques = []
     vista_lineas = []
     vista_primera = 0
-    vista_ancho_maquetado = -1
+    vista_maquetados = 0
+    vista_al_final = true
     vista_rango_pendiente = true
 end
 
@@ -81,63 +272,9 @@ func vista_ir_a(linea: Int)
     vista_al_final = linea >= maximo
 end
 
-func _prefijo(quien: Int) -> String
-    if quien == QUIEN_USUARIO
-        return "Tú: "
-    end
-    if quien == QUIEN_HERRAMIENTA
-        return "· "
-    end
-    return ""
-end
+# --- Partir en líneas ---
 
-# Parte un párrafo en líneas de ancho píxeles como mucho
-func _partir(quien: Int, parrafo: String, ancho: Int, primera: Bool)
-    if parrafo == ""
-        vista_lineas.push(Linea(quien, "", primera))
-        return
-    end
-    linea = ""
-    for palabra in str_split(parrafo, " ")
-        prueba = palabra
-        if linea != ""
-            prueba = linea + " " + palabra
-        end
-        if linea == "" or font_text_width(prueba) <= ancho
-            linea = prueba
-        else
-            vista_lineas.push(Linea(quien, linea, primera))
-            primera = false
-            linea = palabra
-        end
-        # una palabra que no cabe sola: a trozos
-        while font_text_width(linea) > ancho and linea.length > 1
-            n = linea.length - 1
-            while n > 1 and font_text_width(linea[0:n]) > ancho
-                n = n - 1
-            end
-            vista_lineas.push(Linea(quien, linea[0:n], primera))
-            primera = false
-            linea = linea[n:]
-        end
-    end
-    vista_lineas.push(Linea(quien, linea, primera))
-end
-
-func _maquetar(ancho: Int)
-    vista_lineas = []
-    for b in vista_bloques
-        primera = true
-        for p in str_split(_prefijo(b.quien) + b.texto, "\n")
-            _partir(b.quien, p, ancho, primera)
-            primera = false
-        end
-    end
-    vista_ancho_maquetado = ancho
-    vista_rango_pendiente = true
-end
-
-func _colores()
+func _fuentes()
     if _pen_fondo >= 0
         return
     end
@@ -147,7 +284,135 @@ func _colores()
     _pen_herramienta = color_pen(110, 110, 110)
     _pen_aviso = color_pen(170, 30, 30)
     _pen_banda = color_pen(228, 234, 246)
+    _pen_codigo = color_pen(120, 30, 100)
+    _pen_fondo_codigo = color_pen(236, 236, 228)
+    _fuente_texto = font_open("helvetica.font", 11)
+    _fuente_codigo = font_open("topaz.font", 8)
+    if _fuente_texto == 0 or _fuente_codigo == 0
+        # sin las dos, todo con la fuente de la ventana
+        _fuente_texto = 0
+        _fuente_codigo = 0
+    end
+    # las dos fuentes en la misma línea base: lo que sobra por debajo, lo más que sobre en cualquiera
+    _usar(false, 0)
+    _espacio_texto = font_text_width(" ")
+    _base = font_baseline()
+    bajo = font_height() - font_baseline()
+    _usar(true, 0)
+    _espacio_codigo = font_text_width(" ")
+    if font_baseline() > _base
+        _base = font_baseline()
+    end
+    if font_height() - font_baseline() > bajo
+        bajo = font_height() - font_baseline()
+    end
+    vista_alto_linea = _base + bajo + 2
 end
+
+func _usar(codigo: Bool, estilo: Int)
+    if codigo
+        if _fuente_codigo != 0
+            font_use(_fuente_codigo)
+        end
+    elif _fuente_texto != 0
+        font_use(_fuente_texto)
+    end
+    font_style(estilo)
+end
+
+func _medir(p: Palabra) -> Int
+    if p.ancho < 0
+        _usar(p.codigo, p.estilo)
+        p.ancho = font_text_width(p.texto)
+    end
+    return p.ancho
+end
+
+func _linea(quien: Int, tipo: Int, ps: [Palabra], sangria: Int, vineta: String)
+    vista_lineas.push(Linea(quien, tipo, ps, sangria, vineta))
+end
+
+# Una palabra más ancha que la línea, a trozos que caben
+func _trozos(p: Palabra, ancho: Int) -> [Palabra]
+    var ts: [Palabra] = []
+    resto = p.texto
+    espacio = p.espacio
+    _usar(p.codigo, p.estilo)
+    while resto.length > 1 and font_text_width(resto) > ancho
+        n = resto.length - 1
+        while n > 1 and font_text_width(resto[0:n]) > ancho
+            n = n - 1
+        end
+        ts.push(Palabra(resto[0:n], p.estilo, p.codigo, espacio, -1))
+        espacio = false
+        resto = resto[n:]
+    end
+    ts.push(Palabra(resto, p.estilo, p.codigo, espacio, -1))
+    return ts
+end
+
+func _partir(quien: Int, p: Parrafo, ancho: Int)
+    sangria = p.sangria * SANGRIA
+    disp = ancho - sangria
+    vineta = p.vineta
+    var linea: [Palabra] = []
+    usado = 0
+    for pal in p.palabras
+        var piezas: [Palabra] = [pal]
+        if _medir(pal) > disp
+            piezas = _trozos(pal, disp)
+        end
+        for q in piezas
+            extra = 0
+            if linea.length > 0 and q.espacio
+                extra = _espacio_texto
+            end
+            if linea.length > 0 and usado + extra + _medir(q) > disp
+                _linea(quien, p.tipo, linea, sangria, vineta)
+                vineta = ""
+                linea = []
+                usado = 0
+                extra = 0
+            end
+            linea.push(q)
+            usado = usado + extra + _medir(q)
+        end
+    end
+    _linea(quien, p.tipo, linea, sangria, vineta)
+end
+
+# Una línea de código: sin juntar palabras, cortada a lo que cabe (Topaz tiene todas las letras igual de anchas)
+func _partir_codigo(quien: Int, p: Parrafo, ancho: Int)
+    cabe = (ancho - 8) / _espacio_codigo
+    if cabe < 1
+        cabe = 1
+    end
+    t = p.palabras[0].texto
+    while true
+        var ps: [Palabra] = [Palabra(t[0:cabe], 0, true, false, -1)]
+        _linea(quien, P_CODIGO, ps, 4, "")
+        if t.length <= cabe
+            break
+        end
+        t = t[cabe:]
+    end
+end
+
+func _maquetar(b: Bloque, ancho: Int)
+    if vista_lineas.length > 0
+        var vacia: [Palabra] = []
+        _linea(0, P_VACIO, vacia, 0, "")
+    end
+    for p in b.parrafos
+        if p.tipo == P_CODIGO
+            _partir_codigo(b.quien, p, ancho)
+        else
+            _partir(b.quien, p, ancho)
+        end
+    end
+end
+
+# --- Dibujar ---
 
 func _pen_de(quien: Int) -> Int
     if quien == QUIEN_USUARIO
@@ -162,15 +427,73 @@ func _pen_de(quien: Int) -> Int
     return _pen_modelo
 end
 
+func _dibujar_linea(l: Linea, x: Int, ly: Int, ancho: Int)
+    abajo = ly + vista_alto_linea - 1
+    if l.quien == QUIEN_USUARIO
+        # la banda solo si hay un color para ella; la raya a la izquierda siempre (con 4 colores también se ve)
+        if _pen_banda != _pen_fondo
+            gfx_pen(_pen_banda)
+            gfx_rect(x, ly, x + ancho - 1, abajo)
+        end
+        gfx_pen(_pen_usuario)
+        gfx_rect(x + 2, ly, x + 4, abajo)
+    end
+    if l.tipo == P_CODIGO
+        if _pen_fondo_codigo != _pen_fondo
+            gfx_pen(_pen_fondo_codigo)
+            gfx_rect(x + MARGEN, ly, x + ancho - MARGEN, abajo)
+        else
+            gfx_pen(_pen_herramienta)
+            gfx_rect(x + MARGEN, ly, x + MARGEN + 1, abajo)
+        end
+    end
+    base = ly + 1
+    cx = x + MARGEN + l.sangria
+    pen = _pen_de(l.quien)
+    if l.vineta == "*"
+        gfx_pen(pen)
+        medio = ly + vista_alto_linea / 2
+        gfx_rect(cx - 9, medio - 2, cx - 6, medio + 1)
+    elif l.vineta != ""
+        _usar(false, 0)
+        gfx_pen(pen)
+        gfx_text_at(cx - 4 - font_text_width(l.vineta), base + _base, l.vineta)
+    end
+    primera = true
+    for p in l.palabras
+        if p.espacio and not primera
+            cx = cx + _espacio_texto
+        end
+        primera = false
+        _usar(p.codigo, p.estilo)
+        if p.codigo and l.tipo != P_CODIGO and l.quien == QUIEN_MODELO
+            gfx_pen(_pen_codigo)
+        else
+            gfx_pen(pen)
+        end
+        gfx_text_at(cx, base + _base, p.texto)
+        cx = cx + _medir(p)
+    end
+end
+
 func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
-    _colores()
-    vista_alto_linea = font_height() + 2
+    _fuentes()
     if alto != vista_alto_zona
         vista_alto_zona = alto
         vista_rango_pendiente = true
     end
-    if ancho - 2 * MARGEN != vista_ancho_maquetado
-        _maquetar(ancho - 2 * MARGEN)
+    disp = ancho - 2 * MARGEN
+    if disp != vista_ancho_maquetado
+        vista_lineas = []
+        vista_maquetados = 0
+        vista_ancho_maquetado = disp
+    end
+    if vista_maquetados < vista_bloques.length
+        while vista_maquetados < vista_bloques.length
+            _maquetar(vista_bloques[vista_maquetados], disp)
+            vista_maquetados = vista_maquetados + 1
+        end
+        vista_rango_pendiente = true
     end
     if vista_al_final
         vista_ir_a(vista_total())
@@ -178,20 +501,10 @@ func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
     gfx_pen(_pen_fondo)
     gfx_rect(x, y, x + ancho - 1, y + alto - 1)
     gfx_mode(0)
-    ly = y + 4
+    ly = y + 3
     i = vista_primera
     while i < vista_lineas.length and ly + vista_alto_linea <= y + alto
-        l = vista_lineas[i]
-        if l.quien == QUIEN_USUARIO
-            gfx_pen(_pen_banda)
-            gfx_rect(x, ly - 1, x + ancho - 1, ly + vista_alto_linea - 2)
-        end
-        gfx_pen(_pen_de(l.quien))
-        font_style(0)
-        if l.quien == QUIEN_USUARIO
-            font_style(2)
-        end
-        gfx_text_at(x + MARGEN, ly + font_baseline(), l.texto)
+        _dibujar_linea(vista_lineas[i], x, ly, ancho)
         ly = ly + vista_alto_linea
         i = i + 1
     end

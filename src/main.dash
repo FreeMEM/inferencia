@@ -4,7 +4,8 @@
 # La petición avanza sin bloquear la ventana; "Parar" la corta.
 #
 # Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
-# segundos después de la respuesta. "@fichero" toma el texto de ese fichero.
+# segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
+# vista a esa línea después de la respuesta.
 
 import "config.dash"
 import "openrouter.dash"
@@ -20,8 +21,9 @@ const EV_LIENZO = 4
 const EV_TIC = 5
 const EV_NUEVA = 20
 const EV_SALIR = 99
-const TIC_MS = 50
-const CIERRE_PRUEBA_MS = 15000
+const TIC_MS = 50            # mientras llega la respuesta
+const TIC_QUIETO_MS = 300    # si no: para seguir a la vista cuando la ventana cambia de tamaño
+const CIERRE_PRUEBA_TICS = 50
 
 var v: Principal = nil
 var conv: Conversacion = nil
@@ -30,15 +32,21 @@ var ocupado: Bool = false
 var prueba: Bool = false
 var tokens_entrada: Int = 0
 var tokens_salida: Int = 0
+var barra_valor: Int = -1
+var tics_cierre: Int = -1
 
 func dibujar(x: Int, y: Int, ancho: Int, alto: Int)
     vista_dibujar(x, y, ancho, alto)
 end
 
-# La barra sigue a la vista (cuando el texto o el alto cambian)
+# La barra sigue a la vista (cuando el texto o el alto cambian, y cuando la vista baja sola al final)
 func ajustar_barra()
     if vista_cambio_rango()
         mui_set_range(v.barra, vista_total(), vista_visibles())
+        barra_valor = -1
+    end
+    if vista_primera != barra_valor
+        barra_valor = vista_primera
         mui_set_value(v.barra, vista_primera)
     end
 end
@@ -71,16 +79,11 @@ func enviar(cfg: Config)
     carga = conv_empezar(conv, cfg)
     poner_ocupado(true)
     refrescar()
-    mui_timer(TIC_MS, EV_TIC)
 end
 
 # Sigue la petición; al acabar, enseña la respuesta
 func avanzar()
-    if not ocupado
-        return
-    end
-    if not http_avanzar(carga)
-        mui_timer(TIC_MS, EV_TIC)
+    if not ocupado or not http_avanzar(carga)
         return
     end
     t = conv_acabar(conv, carga)
@@ -99,7 +102,26 @@ func avanzar()
     poner_ocupado(false)
     refrescar()
     if prueba
-        mui_timer(CIERRE_PRUEBA_MS, EV_SALIR)
+        tics_cierre = CIERRE_PRUEBA_TICS
+        desde = env_get("INFERENCIA_PRUEBA_LINEA")
+        if desde != ""
+            mui_canvas_redraw(v.conversacion)
+            vista_ir_a(Int(desde))
+            refrescar()
+        end
+    end
+end
+
+# El tic de siempre: rápido mientras llega una respuesta
+func tic()
+    avanzar()
+    if tics_cierre > 0
+        tics_cierre = tics_cierre - 1
+    end
+    if ocupado
+        mui_timer(TIC_MS, EV_TIC)
+    else
+        mui_timer(TIC_QUIETO_MS, EV_TIC)
     end
 end
 
@@ -128,6 +150,7 @@ Main
         vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
         mui_window_open(v.window)
         ajustar_barra()
+        mui_timer(TIC_QUIETO_MS, EV_TIC)
 
         pregunta = env_get("INFERENCIA_PRUEBA")
         if str_starts(pregunta, "@")
@@ -141,10 +164,12 @@ Main
 
         while true
             ev = mui_wait_event_signals(task_signal())
-            if ev == -1 or ev == EV_SALIR
+            if ev == -1 or ev == EV_SALIR or tics_cierre == 0
                 break
             end
-            if ev == 0 or ev == EV_TIC
+            if ev == EV_TIC
+                tic()
+            elif ev == 0
                 avanzar()
             elif ev == EV_ENVIAR
                 enviar(cfg)
