@@ -1,29 +1,182 @@
 # Inferencia: la IA en el Amiga.
 #
-# Por ahora (I1), en el Shell: una pregunta y su respuesta, con la configuración de config.dash.
-#   Inferencia "¿Qué es un Amiga?"
-# La ventana MUI llega en I2.
+# La ventana (ventana.dashui): el modelo arriba, la conversación en el medio y la línea para escribir abajo.
+# La petición avanza sin bloquear la ventana; "Parar" la corta.
+#
+# Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
+# segundos después de la respuesta. "@fichero" toma el texto de ese fichero.
 
 import "config.dash"
 import "openrouter.dash"
+import "vista.dash"
+import "ventana.dashui"
 
 const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas."
 
+const EV_ENVIAR = 1
+const EV_PARAR = 2
+const EV_BARRA = 3
+const EV_LIENZO = 4
+const EV_TIC = 5
+const EV_NUEVA = 20
+const EV_SALIR = 99
+const TIC_MS = 50
+const CIERRE_PRUEBA_MS = 15000
+
+var v: Principal = nil
+var conv: Conversacion = nil
+var carga: Carga = nil
+var ocupado: Bool = false
+var prueba: Bool = false
+var tokens_entrada: Int = 0
+var tokens_salida: Int = 0
+
+func dibujar(x: Int, y: Int, ancho: Int, alto: Int)
+    vista_dibujar(x, y, ancho, alto)
+end
+
+# La barra sigue a la vista (cuando el texto o el alto cambian)
+func ajustar_barra()
+    if vista_cambio_rango()
+        mui_set_range(v.barra, vista_total(), vista_visibles())
+        mui_set_value(v.barra, vista_primera)
+    end
+end
+
+func refrescar()
+    mui_canvas_redraw(v.conversacion)
+    ajustar_barra()
+end
+
+func poner_ocupado(o: Bool)
+    ocupado = o
+    mui_set_enabled(v.parar, o)
+    mui_set_enabled(v.enviar, not o)
+    if o
+        mui_set_text(v.estado, "Pensando...")
+    else
+        mui_set_text(v.estado, "#{tokens_entrada + tokens_salida} tokens")
+    end
+end
+
+func enviar(cfg: Config)
+    texto = str_trim(mui_get_text(v.entrada))
+    if texto == "" or ocupado
+        return
+    end
+    cfg.modelo = str_trim(mui_get_text(v.modelo))
+    mui_set_text(v.entrada, "")
+    vista_anadir(QUIEN_USUARIO, texto)
+    conv_usuario(conv, texto)
+    carga = conv_empezar(conv, cfg)
+    poner_ocupado(true)
+    refrescar()
+    mui_timer(TIC_MS, EV_TIC)
+end
+
+# Sigue la petición; al acabar, enseña la respuesta
+func avanzar()
+    if not ocupado
+        return
+    end
+    if not http_avanzar(carga)
+        mui_timer(TIC_MS, EV_TIC)
+        return
+    end
+    t = conv_acabar(conv, carga)
+    carga = nil
+    if t.error != ""
+        vista_anadir(QUIEN_AVISO, "Error: " + t.error)
+    else
+        tokens_entrada = tokens_entrada + t.entrada
+        tokens_salida = tokens_salida + t.salida
+        vista_anadir(QUIEN_MODELO, t.texto)
+        if t.llamadas.length > 0
+            # las herramientas llegan en I4
+            vista_anadir(QUIEN_AVISO, "El modelo pide herramientas, que aún no están.")
+        end
+    end
+    poner_ocupado(false)
+    refrescar()
+    if prueba
+        mui_timer(CIERRE_PRUEBA_MS, EV_SALIR)
+    end
+end
+
+func parar()
+    if not ocupado
+        return
+    end
+    http_cancelar(carga)
+    carga = nil
+    vista_anadir(QUIEN_AVISO, "Parado.")
+    poner_ocupado(false)
+    refrescar()
+end
+
 Main
     cfg = config_leer()
-    pregunta = arg(0)
-    if pregunta == ""
-        Print "Uso: Inferencia \"pregunta\""
+    if mui_app_begin("Inferencia", "INFERENCIA") == 0
+        Print "Inferencia necesita MUI y un 68020 o mejor."
     else
-        c = conv_nueva(SISTEMA)
-        conv_usuario(c, pregunta)
-        t = conv_pedir(c, cfg)
-        if t.error != ""
-            Print "Error: " + t.error
-        else
-            Print t.texto
-            Print "(#{t.modelo}, #{t.entrada} + #{t.salida} tokens)"
+        v = Principal_create()
+        mui_set_text(v.modelo, cfg.modelo)
+        mui_canvas_on_draw(v.conversacion, dibujar)
+        mui_canvas_on_input(v.conversacion, EV_LIENZO)
+        mui_canvas_buffered(v.conversacion, true)
+        conv = conv_nueva(SISTEMA)
+        vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
+        mui_window_open(v.window)
+        ajustar_barra()
+
+        pregunta = env_get("INFERENCIA_PRUEBA")
+        if str_starts(pregunta, "@")
+            pregunta = str_trim(file_read_text(pregunta[1:]))
         end
+        if pregunta != ""
+            prueba = true
+            mui_set_text(v.entrada, pregunta)
+            enviar(cfg)
+        end
+
+        while true
+            ev = mui_wait_event_signals(task_signal())
+            if ev == -1 or ev == EV_SALIR
+                break
+            end
+            if ev == 0 or ev == EV_TIC
+                avanzar()
+            elif ev == EV_ENVIAR
+                enviar(cfg)
+            elif ev == EV_PARAR
+                parar()
+            elif ev == EV_BARRA
+                if mui_get_value(v.barra) != vista_primera
+                    vista_ir_a(mui_get_value(v.barra))
+                    mui_canvas_redraw(v.conversacion)
+                end
+            elif ev == EV_LIENZO
+                rueda = mui_canvas_wheel(v.conversacion)
+                if rueda != 0
+                    vista_ir_a(vista_primera - rueda * 3)
+                    mui_set_value(v.barra, vista_primera)
+                    mui_canvas_redraw(v.conversacion)
+                end
+            elif ev == EV_NUEVA
+                parar()
+                conv = conv_nueva(SISTEMA)
+                vista_limpiar()
+                tokens_entrada = 0
+                tokens_salida = 0
+                poner_ocupado(false)
+                refrescar()
+            end
+            ajustar_barra()
+        end
+        if ocupado
+            http_cancelar(carga)
+        end
+        mui_app_end()
     end
     red_terminar()
 end

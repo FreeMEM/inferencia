@@ -1,0 +1,49 @@
+{
+  "dashui": 1,
+  "windows": [
+    {
+      "name": "Principal",
+      "title": "Inferencia",
+      "id": 1,
+      "size": [60, 70],
+      "menus": [
+        {
+          "title": "Proyecto",
+          "items": [
+            { "label": "Conversación nueva", "key": "N", "event": 20 },
+            { "separator": true },
+            { "label": "Salir", "key": "Q", "event": 99 }
+          ]
+        }
+      ],
+      "root": {
+        "type": "vgroup",
+        "children": [
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "label", "text": "Modelo:" },
+              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 300 },
+              { "type": "text", "name": "estado", "text": "", "weight": 200 }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "canvas", "name": "conversacion", "min_width": 300, "min_height": 120, "weight": 300 },
+              { "type": "scrollbar", "name": "barra", "vertical": true, "change": 3 }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "string", "name": "entrada", "text": "", "max": 4000, "ack": 1, "weight": 400 },
+              { "type": "button", "name": "enviar", "label": "_Enviar", "event": 1 },
+              { "type": "button", "name": "parar", "label": "_Parar", "event": 2, "disabled": true }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

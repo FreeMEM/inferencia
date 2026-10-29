@@ -52,7 +52,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Configuración: proveedor, URL, clave y modelo. Se leen de `ENV:` y `ENVARC:Inferencia/`.
   - En `src/openrouter.dash`, la conversación como lista de mensajes y las herramientas en formato OpenAI
     (`tools`, `tool_calls`, mensajes `tool`).
-- [ ] I2 Ventana MUI (`.dashui`):
+- [x] I2 Ventana MUI (`.dashui`):
   - Conversación en `mui_canvas` con `mui_scrollbar`, línea de entrada, botones Enviar y Parar, y modelo.
   - La petición sin bloquear (`http_empezar_metodo` y `http_avanzar` con `mui_wait_event_signals`).
   - Prueba: captura y un intercambio contra el servidor falso.
@@ -132,3 +132,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   las herramientas (tool_calls) y la petición sin esperar, `src/main.dash` en el Shell. El servidor falso pide
   herramientas ("LLAMA nombre {json}"). `tests/prueba_conversacion.dash` en FS-UAE: dos llamadas, sus resultados
   y la respuesta, también sin esperar; la "ñ" va y vuelve.
+- 2026-10-30, I2: `src/ventana.dashui` (modelo, conversación en canvas con barra, entrada, Enviar y Parar, menú),
+  `src/vista.dash` (bloques partidos al ancho, colores por quién habla) y `src/main.dash` con la petición sin
+  bloquear (`mui_wait_event_signals(task_signal())` y un tic de 50 ms). `tests/ventana.sh` la prueba en FS-UAE
+  contra el servidor falso con captura: tildes bien, texto partido, tokens. Pendiente para I3: comprobar que la
+  barra se pone al final (en la captura el mando parece arriba) y la banda del usuario no se ve con 4 colores.
+  emu_run escribe el Startup-Sequence en UTF-8 y el sistema no tiene `Copy`: la pregunta de prueba va en un
+  fichero Latin-1 (`INFERENCIA_PRUEBA=@fichero`).

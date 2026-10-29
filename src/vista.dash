@@ -1,0 +1,199 @@
+# La conversación tal como se ve: bloques de texto (del usuario, del modelo, de las herramientas, avisos)
+# partidos en líneas al ancho de la zona y dibujados desde una línea.
+#
+#   vista_anadir(QUIEN_USUARIO, "hola")
+#   vista_dibujar(x, y, ancho, alto)       # desde la función de dibujo del canvas
+#   if vista_cambio_rango() ... mui_set_range(barra, vista_total(), vista_visibles())
+
+const QUIEN_USUARIO = 1
+const QUIEN_MODELO = 2
+const QUIEN_HERRAMIENTA = 3
+const QUIEN_AVISO = 4
+const MARGEN = 8
+
+struct Bloque
+    quien: Int
+    texto: String
+end
+
+struct Linea
+    quien: Int
+    texto: String
+    primera: Bool     # la primera línea de su bloque (lleva espacio encima)
+end
+
+var vista_bloques: [Bloque] = []
+var vista_lineas: [Linea] = []
+var vista_primera: Int = 0          # la primera línea que se ve
+var vista_ancho_maquetado: Int = -1
+var vista_alto_linea: Int = 10
+var vista_alto_zona: Int = 0
+var vista_rango_pendiente: Bool = false
+var vista_al_final: Bool = true     # seguir la última línea cuando llega texto
+var _pen_fondo: Int = -1
+var _pen_usuario: Int = 0
+var _pen_modelo: Int = 0
+var _pen_herramienta: Int = 0
+var _pen_aviso: Int = 0
+var _pen_banda: Int = 0
+
+func vista_anadir(quien: Int, texto: String)
+    vista_bloques.push(Bloque(quien, texto))
+    vista_ancho_maquetado = -1
+    vista_al_final = true
+end
+
+func vista_limpiar()
+    vista_bloques = []
+    vista_lineas = []
+    vista_primera = 0
+    vista_ancho_maquetado = -1
+    vista_rango_pendiente = true
+end
+
+func vista_total() -> Int
+    return vista_lineas.length
+end
+
+func vista_visibles() -> Int
+    if vista_alto_linea <= 0
+        return 1
+    end
+    return vista_alto_zona / vista_alto_linea
+end
+
+# true una vez cuando el número de líneas o el alto cambiaron (para la barra)
+func vista_cambio_rango() -> Bool
+    r = vista_rango_pendiente
+    vista_rango_pendiente = false
+    return r
+end
+
+func vista_ir_a(linea: Int)
+    maximo = vista_total() - vista_visibles()
+    if linea > maximo
+        linea = maximo
+    end
+    if linea < 0
+        linea = 0
+    end
+    vista_primera = linea
+    vista_al_final = linea >= maximo
+end
+
+func _prefijo(quien: Int) -> String
+    if quien == QUIEN_USUARIO
+        return "Tú: "
+    end
+    if quien == QUIEN_HERRAMIENTA
+        return "· "
+    end
+    return ""
+end
+
+# Parte un párrafo en líneas de ancho píxeles como mucho
+func _partir(quien: Int, parrafo: String, ancho: Int, primera: Bool)
+    if parrafo == ""
+        vista_lineas.push(Linea(quien, "", primera))
+        return
+    end
+    linea = ""
+    for palabra in str_split(parrafo, " ")
+        prueba = palabra
+        if linea != ""
+            prueba = linea + " " + palabra
+        end
+        if linea == "" or font_text_width(prueba) <= ancho
+            linea = prueba
+        else
+            vista_lineas.push(Linea(quien, linea, primera))
+            primera = false
+            linea = palabra
+        end
+        # una palabra que no cabe sola: a trozos
+        while font_text_width(linea) > ancho and linea.length > 1
+            n = linea.length - 1
+            while n > 1 and font_text_width(linea[0:n]) > ancho
+                n = n - 1
+            end
+            vista_lineas.push(Linea(quien, linea[0:n], primera))
+            primera = false
+            linea = linea[n:]
+        end
+    end
+    vista_lineas.push(Linea(quien, linea, primera))
+end
+
+func _maquetar(ancho: Int)
+    vista_lineas = []
+    for b in vista_bloques
+        primera = true
+        for p in str_split(_prefijo(b.quien) + b.texto, "\n")
+            _partir(b.quien, p, ancho, primera)
+            primera = false
+        end
+    end
+    vista_ancho_maquetado = ancho
+    vista_rango_pendiente = true
+end
+
+func _colores()
+    if _pen_fondo >= 0
+        return
+    end
+    _pen_fondo = color_pen(250, 250, 246)
+    _pen_usuario = color_pen(20, 60, 160)
+    _pen_modelo = color_pen(20, 20, 20)
+    _pen_herramienta = color_pen(110, 110, 110)
+    _pen_aviso = color_pen(170, 30, 30)
+    _pen_banda = color_pen(228, 234, 246)
+end
+
+func _pen_de(quien: Int) -> Int
+    if quien == QUIEN_USUARIO
+        return _pen_usuario
+    end
+    if quien == QUIEN_HERRAMIENTA
+        return _pen_herramienta
+    end
+    if quien == QUIEN_AVISO
+        return _pen_aviso
+    end
+    return _pen_modelo
+end
+
+func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
+    _colores()
+    vista_alto_linea = font_height() + 2
+    if alto != vista_alto_zona
+        vista_alto_zona = alto
+        vista_rango_pendiente = true
+    end
+    if ancho - 2 * MARGEN != vista_ancho_maquetado
+        _maquetar(ancho - 2 * MARGEN)
+    end
+    if vista_al_final
+        vista_ir_a(vista_total())
+    end
+    gfx_pen(_pen_fondo)
+    gfx_rect(x, y, x + ancho - 1, y + alto - 1)
+    gfx_mode(0)
+    ly = y + 4
+    i = vista_primera
+    while i < vista_lineas.length and ly + vista_alto_linea <= y + alto
+        l = vista_lineas[i]
+        if l.quien == QUIEN_USUARIO
+            gfx_pen(_pen_banda)
+            gfx_rect(x, ly - 1, x + ancho - 1, ly + vista_alto_linea - 2)
+        end
+        gfx_pen(_pen_de(l.quien))
+        font_style(0)
+        if l.quien == QUIEN_USUARIO
+            font_style(2)
+        end
+        gfx_text_at(x + MARGEN, ly + font_baseline(), l.texto)
+        ly = ly + vista_alto_linea
+        i = i + 1
+    end
+    font_style(0)
+end

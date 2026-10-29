@@ -3,6 +3,8 @@
 De momento se compila con el Dash 2.0 de la rama `ide-piezas` de FreeMEMLang (`./dash`), que trae
 `lib/json.dash` y `lib/red/`.
 
+La ventana, con captura: `tests/ventana.sh <worktree de Dash> "pregunta" captura.png 8`.
+
 Contra el OpenRouter falso, sin gastar (`prueba_falsa` y `prueba_conversacion`):
 
 ```sh
