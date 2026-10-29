@@ -11,7 +11,8 @@ python3 tests/servidor_falso.py 40900 &
 tools/emu_run.py --set bsdsocket_library=1 prueba_falsa
 ```
 
-Contra OpenRouter de verdad hace falta un sistema con AmiSSL (`tools/emu_sys_amissl.sh`) y la CPU emulada
+Contra OpenRouter de verdad (la clave en `ENV:OPENROUTER_API_KEY`, por ejemplo con un `SetEnv` en el
+`S/Startup-Extra` de una copia del sistema que se borra después) hace falta un sistema con AmiSSL (`tools/emu_sys_amissl.sh`) y la CPU emulada
 rápida. Con un 68020 a su velocidad, el saludo de TLS no acaba en 60 segundos:
 
 ```sh

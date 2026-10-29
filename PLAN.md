@@ -121,8 +121,10 @@ Están todas, en la rama `ide-piezas` de Dash, todavía sin fusionar:
 
 ## Fases
 
-- **F0** (hecha salvo la respuesta real, falta la clave): un "hola" a OpenRouter desde FS-UAE. TLS, cabeceras,
-  UTF-8 y errores comprobados. Con un 68020 a su velocidad, el saludo de TLS no acaba en un minuto.
+- **F0** (hecha el 2026-10-29): un "hola" a OpenRouter desde FS-UAE, con respuesta de un modelo gratuito
+  (`nvidia/nemotron-3.5-lightning:free`). TLS, cabeceras, UTF-8 y errores comprobados. Con un 68020 a su
+  velocidad, el saludo de TLS no acaba en un minuto; con la CPU emulada al máximo, la pregunta entera tarda
+  unos 5 segundos.
 - **F1**: la ventana con la conversación y las herramientas de ficheros y órdenes, con permisos. Es la
   primera versión usable.
 - **F2**: ARexx (cliente, servidor y la herramienta `arexx`) y las herramientas de sistema, entorno y
