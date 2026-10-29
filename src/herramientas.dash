@@ -1,0 +1,297 @@
+# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar y orden.
+#
+#   herramientas_declarar(conv)                # una vez, al empezar la conversación
+#   if herramienta_pide_permiso(l) ...         # escribir, editar y orden, salvo lo aceptado con "Siempre"
+#   vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
+#   resultado = herramienta_ejecutar(l)        # todas menos orden, que va con orden_empezar y orden_acabar
+#
+# Los resultados llevan topes de tamaño: lo que pasa del tope se corta y se dice.
+
+import "openrouter.dash"
+
+const TOPE_LEER = 20000         # caracteres de un fichero
+const TOPE_SALIDA = 8000        # caracteres de la salida de una orden
+const TOPE_LISTAR = 300         # entradas de un cajón
+const TOPE_BUSCAR = 100         # líneas encontradas
+const TOPE_FICHEROS = 400       # ficheros mirados al buscar
+const TOPE_TAMANO_BUSCAR = 200000
+const TOPE_SEGUNDOS = 120       # una orden, como mucho
+
+# Lo aceptado con "Siempre": nombres de herramienta ("escribir", "editar") y, para orden, la primera palabra
+var permitidos: [String] = []
+
+func herramientas_declarar(c: Conversacion)
+    conv_herramienta(c, "leer", "Lee un fichero de texto. Con desde y hasta, solo esas líneas (desde 1).", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\",\"description\":\"Ruta de AmigaOS, como S:Startup-Sequence\"},\"desde\":{\"type\":\"integer\"},\"hasta\":{\"type\":\"integer\"}},\"required\":[\"fichero\"]}")
+    conv_herramienta(c, "listar", "Lista lo que hay en un cajón (directorio): los cajones acaban en /, los ficheros llevan su tamaño.", "{\"type\":\"object\",\"properties\":{\"cajon\":{\"type\":\"string\",\"description\":\"Ruta de AmigaOS, como SYS: o Work:Proyectos\"}},\"required\":[\"cajon\"]}")
+    conv_herramienta(c, "buscar", "Busca un texto (sin mirar mayúsculas) en los ficheros de un cajón y de los cajones de dentro. Da fichero, línea y texto de cada línea que lo tiene.", "{\"type\":\"object\",\"properties\":{\"cajon\":{\"type\":\"string\"},\"texto\":{\"type\":\"string\"}},\"required\":[\"cajon\",\"texto\"]}")
+    conv_herramienta(c, "escribir", "Crea un fichero o lo sustituye entero por el contenido. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"}},\"required\":[\"fichero\",\"contenido\"]}")
+    conv_herramienta(c, "editar", "Cambia en un fichero un trozo exacto de texto por otro. El trozo tiene que estar una sola vez; si no, da error. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"buscar\":{\"type\":\"string\",\"description\":\"El texto que hay ahora, exacto\"},\"cambiar\":{\"type\":\"string\",\"description\":\"El texto nuevo\"}},\"required\":[\"fichero\",\"buscar\",\"cambiar\"]}")
+    conv_herramienta(c, "orden", "Ejecuta una línea del Shell de AmigaOS y devuelve lo que escribe y su código de retorno. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"orden\":{\"type\":\"string\",\"description\":\"Como se escribe en el Shell, como List SYS: o Version\"},\"segundos\":{\"type\":\"integer\",\"description\":\"Tiempo máximo (60 si no se da)\"}},\"required\":[\"orden\"]}")
+end
+
+func _primera_palabra(s: String) -> String
+    p = str_split(str_trim(s), " ")
+    return str_lower(p[0])
+end
+
+func _clave_permiso(l: Llamada) -> String
+    if l.nombre == "orden"
+        return "orden " + _primera_palabra(llamada_str(l, "orden"))
+    end
+    return l.nombre
+end
+
+func herramienta_pide_permiso(l: Llamada) -> Bool
+    if l.nombre != "escribir" and l.nombre != "editar" and l.nombre != "orden"
+        return false
+    end
+    clave = _clave_permiso(l)
+    for p in permitidos
+        if p == clave
+            return false
+        end
+    end
+    return true
+end
+
+# "Siempre": lo mismo ya no pregunta (en esta sesión)
+func herramienta_permitir_siempre(l: Llamada)
+    permitidos.push(_clave_permiso(l))
+end
+
+# Lo que se ve en la conversación antes de ejecutarla (con el cambio entero, si cambia algo)
+func herramienta_resumen(l: Llamada) -> String
+    if l.nombre == "leer"
+        return "Leer " + llamada_str(l, "fichero")
+    elif l.nombre == "listar"
+        return "Listar " + llamada_str(l, "cajon")
+    elif l.nombre == "buscar"
+        return "Buscar \"" + llamada_str(l, "texto") + "\" en " + llamada_str(l, "cajon")
+    elif l.nombre == "orden"
+        return "Orden: " + llamada_str(l, "orden")
+    elif l.nombre == "escribir"
+        contenido = llamada_str(l, "contenido")
+        r = "Escribir " + llamada_str(l, "fichero") + " (#{contenido.length} caracteres)"
+        return r + _marcar(contenido, "+ ", 12)
+    elif l.nombre == "editar"
+        r = "Editar " + llamada_str(l, "fichero")
+        return r + _marcar(llamada_str(l, "buscar"), "- ", 20) + _marcar(llamada_str(l, "cambiar"), "+ ", 20)
+    end
+    return "Herramienta desconocida: " + l.nombre
+end
+
+# Las líneas de un texto, cada una con su marca delante, hasta n
+func _marcar(texto: String, marca: String, n: Int) -> String
+    r = ""
+    lineas = str_split(texto, "\n")
+    i = 0
+    for linea in lineas
+        if i == n
+            r = r + "\n" + marca + "(#{lineas.length - n} líneas más)"
+            break
+        end
+        r = r + "\n" + marca + linea
+        i = i + 1
+    end
+    return r
+end
+
+func _cortar(texto: String, tope: Int) -> String
+    if texto.length <= tope
+        return texto
+    end
+    return texto[0:tope] + "\n[cortado: el texto tenía #{texto.length} caracteres]"
+end
+
+func ruta_unir(cajon: String, nombre: String) -> String
+    if cajon == "" or str_ends(cajon, ":") or str_ends(cajon, "/")
+        return cajon + nombre
+    end
+    return cajon + "/" + nombre
+end
+
+func _leer(l: Llamada) -> String
+    fichero = llamada_str(l, "fichero")
+    texto = file_read_text(fichero)
+    if texto == nil
+        return "Error: no se puede leer " + fichero
+    end
+    desde = llamada_int(l, "desde")
+    hasta = llamada_int(l, "hasta")
+    if desde > 0 or hasta > 0
+        lineas = str_split(texto, "\n")
+        if desde < 1
+            desde = 1
+        end
+        if hasta < 1 or hasta > lineas.length
+            hasta = lineas.length
+        end
+        r = ""
+        i = desde
+        while i <= hasta
+            r = r + lineas[i - 1] + "\n"
+            i = i + 1
+        end
+        texto = r
+    end
+    return _cortar(texto, TOPE_LEER)
+end
+
+func _listar(l: Llamada) -> String
+    cajon = llamada_str(l, "cajon")
+    n = dir_read(cajon)
+    if n < 0
+        return "Error: no se puede leer el cajón " + cajon
+    end
+    if n == 0
+        return "(vacío)"
+    end
+    r = ""
+    i = 0
+    while i < n and i < TOPE_LISTAR
+        if dir_entry_is_dir(i)
+            r = r + dir_entry_name(i) + "/\n"
+        else
+            r = r + dir_entry_name(i) + "  #{dir_entry_size(i)}\n"
+        end
+        i = i + 1
+    end
+    if n > TOPE_LISTAR
+        r = r + "[y #{n - TOPE_LISTAR} más]\n"
+    end
+    return r
+end
+
+var _buscar_hallados: Int = 0
+var _buscar_mirados: Int = 0
+
+func _buscar_en(cajon: String, texto: String, nivel: Int) -> String
+    n = dir_read(cajon)
+    if n < 0
+        return ""
+    end
+    # dir_read se pisa al entrar en otro cajón: primero se apunta lo de este
+    var ficheros: [String] = []
+    var cajones: [String] = []
+    i = 0
+    while i < n
+        if dir_entry_is_dir(i)
+            cajones.push(ruta_unir(cajon, dir_entry_name(i)))
+        elif dir_entry_size(i) <= TOPE_TAMANO_BUSCAR
+            ficheros.push(ruta_unir(cajon, dir_entry_name(i)))
+        end
+        i = i + 1
+    end
+    r = ""
+    for f in ficheros
+        if _buscar_hallados >= TOPE_BUSCAR or _buscar_mirados >= TOPE_FICHEROS
+            return r
+        end
+        _buscar_mirados = _buscar_mirados + 1
+        contenido = file_read_text(f)
+        if contenido != nil and str_contains(str_lower(contenido), texto)
+            num = 1
+            for linea in str_split(contenido, "\n")
+                if str_contains(str_lower(linea), texto) and _buscar_hallados < TOPE_BUSCAR
+                    r = r + f + ":#{num}: " + str_trim(linea) + "\n"
+                    _buscar_hallados = _buscar_hallados + 1
+                end
+                num = num + 1
+            end
+        end
+    end
+    if nivel < 6
+        for c in cajones
+            r = r + _buscar_en(c, texto, nivel + 1)
+        end
+    end
+    return r
+end
+
+func _buscar(l: Llamada) -> String
+    texto = str_lower(llamada_str(l, "texto"))
+    if texto == ""
+        return "Error: falta el texto que buscar"
+    end
+    _buscar_hallados = 0
+    _buscar_mirados = 0
+    r = _buscar_en(llamada_str(l, "cajon"), texto, 0)
+    if r == ""
+        r = "No está en ningún fichero (mirados: #{_buscar_mirados})."
+    elif _buscar_hallados >= TOPE_BUSCAR or _buscar_mirados >= TOPE_FICHEROS
+        r = r + "[parado en el tope: #{TOPE_BUSCAR} líneas o #{TOPE_FICHEROS} ficheros]\n"
+    end
+    return _cortar(r, TOPE_LEER)
+end
+
+func _escribir(l: Llamada) -> String
+    fichero = llamada_str(l, "fichero")
+    contenido = llamada_str(l, "contenido")
+    if file_write_text(fichero, contenido)
+        return "Escrito: " + fichero + " (#{contenido.length} caracteres)"
+    end
+    return "Error: no se puede escribir " + fichero
+end
+
+func _editar(l: Llamada) -> String
+    fichero = llamada_str(l, "fichero")
+    buscar = llamada_str(l, "buscar")
+    cambiar = llamada_str(l, "cambiar")
+    texto = file_read_text(fichero)
+    if texto == nil
+        return "Error: no se puede leer " + fichero
+    end
+    if buscar == ""
+        return "Error: el trozo que buscar está vacío"
+    end
+    p = str_find(texto, buscar)
+    if p < 0
+        return "Error: el trozo no está en " + fichero + ". Léelo otra vez y copia el trozo exacto."
+    end
+    if str_find_from(texto, buscar, p + 1) >= 0
+        return "Error: el trozo está más de una vez en " + fichero + ". Da un trozo más largo."
+    end
+    nuevo = texto[0:p] + cambiar + texto[p + buscar.length:]
+    if not file_write_text(fichero, nuevo)
+        return "Error: no se puede escribir " + fichero
+    end
+    return "Cambiado: " + fichero
+end
+
+# Todas menos orden (que no debe parar la ventana: orden_empezar)
+func herramienta_ejecutar(l: Llamada) -> String
+    if l.nombre == "leer"
+        return _leer(l)
+    elif l.nombre == "listar"
+        return _listar(l)
+    elif l.nombre == "buscar"
+        return _buscar(l)
+    elif l.nombre == "escribir"
+        return _escribir(l)
+    elif l.nombre == "editar"
+        return _editar(l)
+    end
+    return "Error: no hay ninguna herramienta que se llame " + l.nombre
+end
+
+# La orden sin esperar: run_ready(n) hasta que acabe y orden_acabar(n). 0 si no pudo empezar.
+func orden_empezar(l: Llamada) -> Int
+    segundos = llamada_int(l, "segundos")
+    if segundos <= 0
+        segundos = 60
+    end
+    if segundos > TOPE_SEGUNDOS
+        segundos = TOPE_SEGUNDOS
+    end
+    return run_start(llamada_str(l, "orden"), segundos * 1000)
+end
+
+func orden_acabar(n: Int) -> String
+    salida = run_finish(n)
+    rc = run_rc()
+    r = _cortar(salida, TOPE_SALIDA)
+    if rc == -2
+        return r + "\n[se acabó el tiempo y se paró con Ctrl-C]"
+    end
+    return r + "\n[código de retorno: #{rc}]"
+end

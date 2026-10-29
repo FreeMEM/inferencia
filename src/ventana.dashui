@@ -23,8 +23,8 @@
             "type": "hgroup",
             "children": [
               { "type": "label", "text": "Modelo:" },
-              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 300 },
-              { "type": "text", "name": "estado", "text": "", "weight": 200 }
+              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 250 },
+              { "type": "text", "name": "estado", "text": "", "weight": 250 }
             ]
           },
           {

@@ -3,16 +3,22 @@
 # La ventana (ventana.dashui): el modelo arriba, la conversación en el medio y la línea para escribir abajo.
 # La petición avanza sin bloquear la ventana; "Parar" la corta.
 #
+# Cuando el modelo pide herramientas, se ejecutan una a una y sus resultados vuelven al modelo, hasta que
+# contesta sin pedir más. Las que cambian algo (escribir, editar, orden) preguntan antes con botones dentro de
+# la conversación: Sí, No y Siempre.
+#
 # Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
 # segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
-# vista a esa línea después de la respuesta.
+# vista a esa línea después de la respuesta. ENV:INFERENCIA_PRUEBA_PERMISO (Si, No o Siempre) contesta solo a los
+# permisos, tres segundos después de preguntar.
 
 import "config.dash"
 import "openrouter.dash"
+import "herramientas.dash"
 import "vista.dash"
 import "ventana.dashui"
 
-const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas."
+const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas. Tienes herramientas para leer, buscar y cambiar ficheros y para ejecutar órdenes del Shell; úsalas cuando hagan falta. Las rutas son de AmigaOS (SYS:, S:, Work:Cajón/fichero)."
 
 const EV_ENVIAR = 1
 const EV_PARAR = 2
@@ -21,15 +27,30 @@ const EV_LIENZO = 4
 const EV_TIC = 5
 const EV_NUEVA = 20
 const EV_SALIR = 99
-const TIC_MS = 50            # mientras llega la respuesta
+const TIC_MS = 50            # mientras pasa algo
 const TIC_QUIETO_MS = 300    # si no: para seguir a la vista cuando la ventana cambia de tamaño
 const CIERRE_PRUEBA_TICS = 50
+const PERMISO_PRUEBA_TICS = 60
+const MAX_VUELTAS = 25       # peticiones seguidas con herramientas antes de parar
+const LINEAS_SALIDA = 12     # de la salida de una orden, las que se ven
+
+const LIBRE = 0
+const PIDIENDO = 1
+const PERMISO = 2
+const ORDEN = 3
 
 var v: Principal = nil
+var cfg: Config = nil
 var conv: Conversacion = nil
 var carga: Carga = nil
-var ocupado: Bool = false
+var estado: Int = LIBRE
+var pendientes: [Llamada] = []
+var indice: Int = 0
+var vueltas: Int = 0
+var orden_en_marcha: Int = 0
 var prueba: Bool = false
+var prueba_permiso: String = ""
+var tics_permiso: Int = -1
 var tokens_entrada: Int = 0
 var tokens_salida: Int = 0
 var barra_valor: Int = -1
@@ -56,84 +77,236 @@ func refrescar()
     ajustar_barra()
 end
 
-func poner_ocupado(o: Bool)
-    ocupado = o
-    mui_set_enabled(v.parar, o)
-    mui_set_enabled(v.enviar, not o)
-    if o
+func poner_estado(e: Int)
+    estado = e
+    ocupado = e != LIBRE
+    mui_set_enabled(v.parar, ocupado)
+    mui_set_enabled(v.enviar, not ocupado)
+    if e == PIDIENDO
         mui_set_text(v.estado, "Pensando...")
+    elif e == PERMISO
+        mui_set_text(v.estado, "¿Lo permites?")
+    elif e == ORDEN
+        mui_set_text(v.estado, "Orden en marcha")
     else
         mui_set_text(v.estado, "#{tokens_entrada + tokens_salida} tokens")
+        if prueba
+            tics_cierre = CIERRE_PRUEBA_TICS
+        end
     end
 end
 
-func enviar(cfg: Config)
-    texto = str_trim(mui_get_text(v.entrada))
-    if texto == "" or ocupado
+func enviar(texto: String)
+    if texto == "" or estado != LIBRE
         return
     end
     cfg.modelo = str_trim(mui_get_text(v.modelo))
-    mui_set_text(v.entrada, "")
     vista_anadir(QUIEN_USUARIO, texto)
     conv_usuario(conv, texto)
+    vueltas = 0
+    pedir()
+end
+
+func pedir()
     carga = conv_empezar(conv, cfg)
-    poner_ocupado(true)
+    poner_estado(PIDIENDO)
     refrescar()
 end
 
-# Sigue la petición; al acabar, enseña la respuesta
-func avanzar()
-    if not ocupado or not http_avanzar(carga)
-        return
-    end
+# Ha llegado la respuesta del modelo
+func al_llegar()
     t = conv_acabar(conv, carga)
     carga = nil
     if t.error != ""
         vista_anadir(QUIEN_AVISO, "Error: " + t.error)
-    else
-        tokens_entrada = tokens_entrada + t.entrada
-        tokens_salida = tokens_salida + t.salida
+        poner_estado(LIBRE)
+        refrescar()
+        return
+    end
+    tokens_entrada = tokens_entrada + t.entrada
+    tokens_salida = tokens_salida + t.salida
+    if t.texto != ""
         vista_anadir(QUIEN_MODELO, t.texto)
-        if t.llamadas.length > 0
-            # las herramientas llegan en I4
-            vista_anadir(QUIEN_AVISO, "El modelo pide herramientas, que aún no están.")
+    end
+    if t.llamadas.length == 0
+        if t.fin == "length"
+            vista_anadir(QUIEN_AVISO, "La respuesta se cortó: el modelo llegó a su tope de longitud.")
+        end
+        poner_estado(LIBRE)
+        refrescar()
+        return
+    end
+    pendientes = t.llamadas
+    indice = 0
+    vueltas = vueltas + 1
+    if vueltas > MAX_VUELTAS
+        vista_anadir(QUIEN_AVISO, "Parado: el modelo lleva #{MAX_VUELTAS} vueltas seguidas con herramientas.")
+        cerrar_pendientes("No se ejecutó: demasiadas vueltas seguidas.")
+        poner_estado(LIBRE)
+        refrescar()
+        return
+    end
+    seguir()
+end
+
+# Las herramientas pendientes, una a una; al acabar, sus resultados van al modelo
+func seguir()
+    while indice < pendientes.length
+        l = pendientes[indice]
+        vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
+        if herramienta_pide_permiso(l)
+            var botones: [String] = ["Sí", "No", "Siempre"]
+            vista_botones(botones)
+            poner_estado(PERMISO)
+            tics_permiso = PERMISO_PRUEBA_TICS
+            refrescar()
+            return
+        end
+        if not ejecutar(l)
+            return
         end
     end
-    poner_ocupado(false)
-    refrescar()
-    if prueba
-        tics_cierre = CIERRE_PRUEBA_TICS
-        desde = env_get("INFERENCIA_PRUEBA_LINEA")
-        if desde != ""
-            mui_canvas_redraw(v.conversacion)
-            vista_ir_a(Int(desde))
-            refrescar()
+    pedir()
+end
+
+# false si se quedó en marcha (una orden)
+func ejecutar(l: Llamada) -> Bool
+    if l.nombre == "orden"
+        orden_en_marcha = orden_empezar(l)
+        if orden_en_marcha == 0
+            resultado("Error: no se pudo empezar la orden.")
+            return true
         end
+        poner_estado(ORDEN)
+        refrescar()
+        return false
+    end
+    resultado(herramienta_ejecutar(l))
+    return true
+end
+
+# El resultado de la herramienta actual: al modelo, y a la vista lo que interesa al usuario
+func resultado(r: String)
+    l = pendientes[indice]
+    indice = indice + 1
+    conv_resultado(conv, l.id, r)
+    if str_starts(r, "Error")
+        vista_anadir(QUIEN_AVISO, r)
+    elif l.nombre == "orden"
+        lineas = str_split(str_trim(r), "\n")
+        s = "Salida"
+        i = 0
+        for linea in lineas
+            if i == LINEAS_SALIDA and lineas.length > LINEAS_SALIDA + 1
+                s = s + "\n(#{lineas.length - i} líneas más)"
+                break
+            end
+            s = s + "\n" + linea
+            i = i + 1
+        end
+        vista_anadir(QUIEN_HERRAMIENTA, s)
+    end
+    refrescar()
+end
+
+# Las que quedan sin hacer también llevan resultado, porque la API lo pide para cada llamada
+func cerrar_pendientes(motivo: String)
+    while indice < pendientes.length
+        conv_resultado(conv, pendientes[indice].id, motivo)
+        indice = indice + 1
     end
 end
 
-# El tic de siempre: rápido mientras llega una respuesta
-func tic()
-    avanzar()
-    if tics_cierre > 0
-        tics_cierre = tics_cierre - 1
+func responder_permiso(n: Int)
+    if estado != PERMISO or n < 0
+        return
     end
-    if ocupado
-        mui_timer(TIC_MS, EV_TIC)
+    l = pendientes[indice]
+    if n == 1
+        vista_responder("No")
+        resultado("El usuario no lo ha permitido.")
+        seguir()
+        return
+    end
+    if n == 2
+        herramienta_permitir_siempre(l)
+        vista_responder("Siempre")
     else
-        mui_timer(TIC_QUIETO_MS, EV_TIC)
+        vista_responder("Sí")
+    end
+    poner_estado(PIDIENDO)
+    if ejecutar(l)
+        seguir()
+    end
+end
+
+# Sigue lo que esté en marcha
+func avanzar()
+    if estado == PIDIENDO
+        if carga != nil and http_avanzar(carga)
+            al_llegar()
+        end
+    elif estado == ORDEN
+        if run_ready(orden_en_marcha)
+            r = orden_acabar(orden_en_marcha)
+            orden_en_marcha = 0
+            poner_estado(PIDIENDO)
+            resultado(r)
+            seguir()
+        end
     end
 end
 
 func parar()
-    if not ocupado
+    if estado == LIBRE
         return
     end
-    http_cancelar(carga)
-    carga = nil
+    if estado == PIDIENDO and carga != nil
+        http_cancelar(carga)
+        carga = nil
+    elif estado == ORDEN
+        run_break(orden_en_marcha)
+        resultado(orden_acabar(orden_en_marcha) + "\n[parada por el usuario]")
+        orden_en_marcha = 0
+    elif estado == PERMISO
+        vista_responder("Parado")
+    end
+    cerrar_pendientes("Parado por el usuario.")
     vista_anadir(QUIEN_AVISO, "Parado.")
-    poner_ocupado(false)
+    poner_estado(LIBRE)
     refrescar()
+end
+
+# El tic de siempre: rápido mientras pasa algo
+func tic()
+    avanzar()
+    if estado == PERMISO and prueba_permiso != ""
+        tics_permiso = tics_permiso - 1
+        if tics_permiso == 0
+            if prueba_permiso == "No"
+                responder_permiso(1)
+            elif prueba_permiso == "Siempre"
+                responder_permiso(2)
+            else
+                responder_permiso(0)
+            end
+        end
+    end
+    if estado == LIBRE and tics_cierre > 0
+        tics_cierre = tics_cierre - 1
+        if tics_cierre == CIERRE_PRUEBA_TICS - 1
+            desde = env_get("INFERENCIA_PRUEBA_LINEA")
+            if desde != ""
+                vista_ir_a(Int(desde))
+                refrescar()
+            end
+        end
+    end
+    if estado != LIBRE
+        mui_timer(TIC_MS, EV_TIC)
+    else
+        mui_timer(TIC_QUIETO_MS, EV_TIC)
+    end
 end
 
 Main
@@ -147,8 +320,10 @@ Main
         mui_canvas_on_input(v.conversacion, EV_LIENZO)
         mui_canvas_buffered(v.conversacion, true)
         conv = conv_nueva(SISTEMA)
+        herramientas_declarar(conv)
         vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
         mui_window_open(v.window)
+        poner_estado(LIBRE)
         ajustar_barra()
         mui_timer(TIC_QUIETO_MS, EV_TIC)
 
@@ -158,8 +333,8 @@ Main
         end
         if pregunta != ""
             prueba = true
-            mui_set_text(v.entrada, pregunta)
-            enviar(cfg)
+            prueba_permiso = env_get("INFERENCIA_PRUEBA_PERMISO")
+            enviar(pregunta)
         end
 
         while true
@@ -172,7 +347,11 @@ Main
             elif ev == 0
                 avanzar()
             elif ev == EV_ENVIAR
-                enviar(cfg)
+                texto = str_trim(mui_get_text(v.entrada))
+                if texto != "" and estado == LIBRE
+                    mui_set_text(v.entrada, "")
+                    enviar(texto)
+                end
             elif ev == EV_PARAR
                 parar()
             elif ev == EV_BARRA
@@ -186,20 +365,25 @@ Main
                     vista_ir_a(vista_primera - rueda * 3)
                     mui_set_value(v.barra, vista_primera)
                     mui_canvas_redraw(v.conversacion)
+                elif mui_canvas_button(v.conversacion) == 1 and estado == PERMISO
+                    responder_permiso(vista_boton_en(mui_canvas_mouse_x(v.conversacion), mui_canvas_mouse_y(v.conversacion)))
                 end
             elif ev == EV_NUEVA
                 parar()
                 conv = conv_nueva(SISTEMA)
+                herramientas_declarar(conv)
                 vista_limpiar()
                 tokens_entrada = 0
                 tokens_salida = 0
-                poner_ocupado(false)
+                poner_estado(LIBRE)
                 refrescar()
             end
             ajustar_barra()
         end
-        if ocupado
+        if estado == PIDIENDO and carga != nil
             http_cancelar(carga)
+        elif estado == ORDEN
+            run_break(orden_en_marcha)
         end
         mui_app_end()
     end

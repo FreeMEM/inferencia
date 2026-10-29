@@ -5,6 +5,9 @@
 #   vista_dibujar(x, y, ancho, alto)       # desde la función de dibujo del canvas
 #   if vista_cambio_rango() ... mui_set_range(barra, vista_total(), vista_visibles())
 #
+#   vista_botones(["Sí", "No", "Siempre"])   # botones al final; vista_boton_en(x, y) dice cuál se pulsó
+#   vista_responder("Sí")                     # quita los botones y deja la respuesta
+#
 # Lo del modelo se lee como Markdown: párrafos, **negrita**, *cursiva*, `código`, títulos (#), listas (-, *, 1.) y
 # bloques de código (```), que van en Topaz. Cada bloque se lee una vez al añadirlo; al cambiar el ancho solo se
 # vuelve a partir en líneas.
@@ -20,6 +23,9 @@ const P_TEXTO = 0
 const P_TITULO = 1
 const P_CODIGO = 2
 const P_VACIO = 3
+const P_BOTONES = 4     # las palabras son los botones
+const P_QUITADO = 5     # una línea que un cambio quita ("- ")
+const P_PUESTO = 6      # una línea que un cambio pone ("+ ")
 
 const NEGRITA = 2
 const CURSIVA = 4
@@ -74,6 +80,19 @@ var _fuente_codigo: Int = 0
 var _espacio_texto: Int = 4
 var _espacio_codigo: Int = 8
 var _base: Int = 8                  # la línea base común de las dos fuentes
+var _pen_quitado: Int = 0
+var _pen_puesto: Int = 0
+var _pen_boton: Int = 0
+var _pen_brillo: Int = 0
+var _pen_sombra: Int = 0
+# Los botones que se ven, desde la esquina de la zona (los pone vista_dibujar)
+var _boton_x1: [Int] = []
+var _boton_y1: [Int] = []
+var _boton_x2: [Int] = []
+var _boton_y2: [Int] = []
+var _boton_n: [Int] = []
+var _zona_x: Int = 0
+var _zona_y: Int = 0
 
 # --- Leer los bloques ---
 
@@ -218,6 +237,70 @@ func _leer_llano(texto: String, estilo: Int, prefijo: String) -> [Parrafo]
     return ps
 end
 
+# Lo de una herramienta: la primera línea dice qué hace; las que empiezan por "- " y "+ " son un cambio
+func _leer_herramienta(texto: String) -> [Parrafo]
+    var ps: [Parrafo] = []
+    primera = true
+    for linea in str_split(str_replace(texto, "\t", "    "), "\n")
+        if primera
+            ps.push(Parrafo(P_TEXTO, 0, "", _palabras_llanas("· " + linea, NEGRITA)))
+            primera = false
+        else
+            tipo = P_TEXTO
+            if str_starts(linea, "- ")
+                tipo = P_QUITADO
+            elif str_starts(linea, "+ ")
+                tipo = P_PUESTO
+            end
+            if tipo == P_TEXTO
+                ps.push(Parrafo(P_TEXTO, 1, "", _palabras_llanas(linea, 0)))
+            else
+                var pc: [Palabra] = [Palabra(linea, 0, true, false, -1)]
+                ps.push(Parrafo(tipo, 1, "", pc))
+            end
+        end
+    end
+    return ps
+end
+
+func vista_botones(etiquetas: [String])
+    var pb: [Palabra] = []
+    for e in etiquetas
+        pb.push(Palabra(e, 0, false, true, -1))
+    end
+    var ps: [Parrafo] = [Parrafo(P_BOTONES, 1, "", pb)]
+    vista_bloques.push(Bloque(QUIEN_HERRAMIENTA, ps))
+    vista_al_final = true
+end
+
+# Los botones de la pregunta pendiente pasan a ser la respuesta
+func vista_responder(texto: String)
+    i = vista_bloques.length - 1
+    while i >= 0
+        for p in vista_bloques[i].parrafos
+            if p.tipo == P_BOTONES
+                p.tipo = P_TEXTO
+                p.palabras = _palabras_llanas("Respuesta: " + texto, CURSIVA)
+                vista_ancho_maquetado = -1
+                return
+            end
+        end
+        i = i - 1
+    end
+end
+
+# El botón (su número, desde 0) en x, y de la zona; -1 si no hay ninguno ahí
+func vista_boton_en(x: Int, y: Int) -> Int
+    i = 0
+    while i < _boton_n.length
+        if x >= _boton_x1[i] and x <= _boton_x2[i] and y >= _boton_y1[i] and y <= _boton_y2[i]
+            return _boton_n[i]
+        end
+        i = i + 1
+    end
+    return -1
+end
+
 func vista_anadir(quien: Int, texto: String)
     var ps: [Parrafo] = []
     if quien == QUIEN_MODELO
@@ -225,7 +308,7 @@ func vista_anadir(quien: Int, texto: String)
     elif quien == QUIEN_AVISO
         ps = _leer_llano(texto, CURSIVA, "")
     elif quien == QUIEN_HERRAMIENTA
-        ps = _leer_llano(texto, 0, "· ")
+        ps = _leer_herramienta(texto)
     else
         ps = _leer_llano(texto, 0, "")
     end
@@ -286,6 +369,11 @@ func _fuentes()
     _pen_banda = color_pen(228, 234, 246)
     _pen_codigo = color_pen(120, 30, 100)
     _pen_fondo_codigo = color_pen(236, 236, 228)
+    _pen_quitado = color_pen(180, 30, 30)
+    _pen_puesto = color_pen(20, 120, 40)
+    _pen_boton = color_pen(200, 200, 196)
+    _pen_brillo = color_pen(255, 255, 255)
+    _pen_sombra = color_pen(60, 60, 60)
     _fuente_texto = font_open("helvetica.font", 11)
     _fuente_codigo = font_open("topaz.font", 8)
     if _fuente_texto == 0 or _fuente_codigo == 0
@@ -383,14 +471,18 @@ end
 
 # Una línea de código: sin juntar palabras, cortada a lo que cabe (Topaz tiene todas las letras igual de anchas)
 func _partir_codigo(quien: Int, p: Parrafo, ancho: Int)
-    cabe = (ancho - 8) / _espacio_codigo
+    sangria = 4
+    if p.tipo != P_CODIGO
+        sangria = p.sangria * SANGRIA
+    end
+    cabe = (ancho - sangria - 4) / _espacio_codigo
     if cabe < 1
         cabe = 1
     end
     t = p.palabras[0].texto
     while true
         var ps: [Palabra] = [Palabra(t[0:cabe], 0, true, false, -1)]
-        _linea(quien, P_CODIGO, ps, 4, "")
+        _linea(quien, p.tipo, ps, sangria, "")
         if t.length <= cabe
             break
         end
@@ -404,8 +496,13 @@ func _maquetar(b: Bloque, ancho: Int)
         _linea(0, P_VACIO, vacia, 0, "")
     end
     for p in b.parrafos
-        if p.tipo == P_CODIGO
+        if p.tipo == P_CODIGO or p.tipo == P_QUITADO or p.tipo == P_PUESTO
             _partir_codigo(b.quien, p, ancho)
+        elif p.tipo == P_BOTONES
+            # los botones son más altos que una línea: ocupan dos
+            _linea(b.quien, P_BOTONES, p.palabras, p.sangria * SANGRIA, "")
+            var vacia: [Palabra] = []
+            _linea(b.quien, P_VACIO, vacia, 0, "")
         else
             _partir(b.quien, p, ancho)
         end
@@ -450,6 +547,14 @@ func _dibujar_linea(l: Linea, x: Int, ly: Int, ancho: Int)
     base = ly + 1
     cx = x + MARGEN + l.sangria
     pen = _pen_de(l.quien)
+    if l.tipo == P_QUITADO
+        pen = _pen_quitado
+    elif l.tipo == P_PUESTO
+        pen = _pen_puesto
+    elif l.tipo == P_BOTONES
+        _dibujar_botones(l, cx, ly)
+        return
+    end
     if l.vineta == "*"
         gfx_pen(pen)
         medio = ly + vista_alto_linea / 2
@@ -476,7 +581,41 @@ func _dibujar_linea(l: Linea, x: Int, ly: Int, ancho: Int)
     end
 end
 
+func _dibujar_botones(l: Linea, cx: Int, ly: Int)
+    n = 0
+    for p in l.palabras
+        w = _medir(p) + 24
+        x2 = cx + w - 1
+        y2 = ly + vista_alto_linea + 3
+        gfx_pen(_pen_boton)
+        gfx_rect(cx, ly, x2, y2)
+        gfx_pen(_pen_brillo)
+        gfx_line(cx, ly, x2, ly)
+        gfx_line(cx, ly, cx, y2)
+        gfx_pen(_pen_sombra)
+        gfx_line(cx, y2, x2, y2)
+        gfx_line(x2, ly, x2, y2)
+        _usar(false, p.estilo)
+        gfx_pen(_pen_modelo)
+        gfx_text_at(cx + 12, ly + 3 + _base, p.texto)
+        _boton_x1.push(cx - _zona_x)
+        _boton_y1.push(ly - _zona_y)
+        _boton_x2.push(x2 - _zona_x)
+        _boton_y2.push(y2 - _zona_y)
+        _boton_n.push(n)
+        n = n + 1
+        cx = x2 + 9
+    end
+end
+
 func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
+    _zona_x = x
+    _zona_y = y
+    _boton_x1 = []
+    _boton_y1 = []
+    _boton_x2 = []
+    _boton_y2 = []
+    _boton_n = []
     _fuentes()
     if alto != vista_alto_zona
         vista_alto_zona = alto
@@ -484,6 +623,7 @@ func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
     end
     disp = ancho - 2 * MARGEN
     if disp != vista_ancho_maquetado
+        # (vista_responder también pide partirlo todo otra vez)
         vista_lineas = []
         vista_maquetados = 0
         vista_ancho_maquetado = disp

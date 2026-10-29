@@ -60,7 +60,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Ajuste de líneas, desplazamiento y rueda.
   - Markdown básico: párrafos, negrita, listas y código en Topaz.
   - Colores para el usuario, el modelo y las herramientas.
-- [ ] I4 Herramientas y permisos:
+- [x] I4 Herramientas y permisos:
   - `leer`, `listar`, `buscar`, `escribir`, `editar` y `orden`.
   - Permisos "Sí", "No" y "Siempre" dentro de la conversación.
   - Topes de tamaño. Bucle hasta que el modelo acaba.
@@ -146,3 +146,12 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   sigue a la vista con un tic de 300 ms (también al cambiar el tamaño). Comprobado en FS-UAE con capturas
   (respuesta Markdown del servidor falso, `LINEA=n` para subir la vista): la barra queda al final. La rueda no
   se ha probado en el emulador. Pendiente: elegir las fuentes en las preferencias (I10).
+- 2026-10-30, I4: `src/herramientas.dash` con leer (desde, hasta), listar, buscar (en cajones de dentro),
+  escribir, editar (trozo exacto, una sola vez) y orden (`run_start`, sin parar la ventana), con topes de
+  tamaño y de tiempo. Escribir, editar y orden preguntan con botones Sí, No y Siempre dibujados en la
+  conversación; los cambios se ven con líneas "-" y "+". `src/main.dash` lleva el bucle: herramientas una a una,
+  resultados al modelo, otra petición, hasta 25 vueltas; Parar da resultado a las que quedan (la API lo pide).
+  Comprobado en FS-UAE contra el servidor falso: escribir, editar (y su error), listar, buscar, Echo en el Shell
+  y leer, con Sí, Siempre y No; el fichero queda con "Segunda línea con ñ". El clic real en los botones queda
+  para I5 (aquí contesta `INFERENCIA_PRUEBA_PERMISO`). Una captura salió mezclada al tomarse a media copia de
+  pantalla; repetida cinco veces, sale igual.

@@ -4,6 +4,11 @@ De momento se compila con el Dash 2.0 de la rama `ide-piezas` de FreeMEMLang (`.
 `lib/json.dash` y `lib/red/`.
 
 La ventana, con captura: `tests/ventana.sh <worktree de Dash> "pregunta" captura.png 8`.
+- `LINEA=n`: la vista sube a esa línea después de la respuesta.
+- `PERMISO=Si` (o `No`, `Siempre`): contesta solo a los permisos, a los tres segundos.
+- `TIEMPO=s`: el tope del emulador (150 s por defecto).
+- Con herramientas: cada línea `LLAMA nombre {json}` de la pregunta hace que el servidor falso pida esa
+  herramienta. Después contesta con el resultado de la última; si es `leer`, se ve el fichero en la respuesta.
 
 Contra el OpenRouter falso, sin gastar (`prueba_falsa` y `prueba_conversacion`):
 
