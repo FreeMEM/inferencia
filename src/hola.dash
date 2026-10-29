@@ -1,0 +1,33 @@
+# F0: una pregunta a OpenRouter y su respuesta en la consola.
+#
+#   hola "¿Qué es un Amiga?"
+#
+# La clave va en ENV:OPENROUTER_API_KEY. ENV:INFERENCIA_MODELO cambia el modelo y ENV:INFERENCIA_URL el
+# proveedor (por ejemplo, un Ollama en casa: http://192.168.1.10:11434/v1/chat/completions).
+
+import "openrouter.dash"
+
+Main
+    url = env_get("INFERENCIA_URL")
+    if url == ""
+        url = "https://openrouter.ai/api/v1/chat/completions"
+    end
+    modelo = env_get("INFERENCIA_MODELO")
+    if modelo == ""
+        modelo = "openrouter/auto"
+    end
+    clave = env_get("OPENROUTER_API_KEY")
+    pregunta = arg(0)
+    if pregunta == ""
+        pregunta = "Hola. Contesta en una frase: ¿quién eres?"
+    end
+
+    c = preguntar(url, clave, modelo, pregunta)
+    red_terminar()
+    if c.error != ""
+        Print "Error: " + c.error
+    else
+        Print c.texto
+        Print "(" + c.modelo + ")"
+    end
+end

@@ -1,0 +1,47 @@
+# Preguntas a un proveedor con el formato de OpenAI Chat Completions (OpenRouter, OpenAI, Ollama...).
+#
+#   c = preguntar("https://openrouter.ai/api/v1/chat/completions", clave, "openrouter/auto", "Hola")
+#   if c.error == ""
+#       Print c.texto                  # en Latin-1, para la consola del Amiga
+#   end
+#
+# La pregunta llega en Latin-1 (la consola) y se manda en UTF-8; la respuesta vuelve a Latin-1.
+
+import "lib/red/http.dash"
+import "lib/json.dash"
+
+struct Contestacion
+    texto: String
+    modelo: String
+    error: String
+end
+
+func preguntar(url: String, clave: String, modelo: String, pregunta: String) -> Contestacion
+    mensaje = json_object()
+    json_set_str(mensaje, "role", "user")
+    json_set_str(mensaje, "content", latin1_to_utf8(pregunta))
+    mensajes = json_array()
+    json_push(mensajes, mensaje)
+    peticion = json_object()
+    json_set_str(peticion, "model", modelo)
+    json_set(peticion, "messages", mensajes)
+
+    cabeceras = "X-Title: Inferencia"
+    if clave != ""
+        cabeceras = "Authorization: Bearer " + clave + "\r\n" + cabeceras
+    end
+    r = http_pedir(url, "POST", json_write(peticion), "application/json", cabeceras, 120000)
+    if r.error != ""
+        return Contestacion("", "", r.error)
+    end
+    j = json_parse(r.cuerpo)
+    if j == nil
+        return Contestacion("", "", "HTTP #{r.estado}: la respuesta no es JSON (#{json_error()})")
+    end
+    if r.estado != 200
+        m = json_path_str(j, "error.message")
+        return Contestacion("", "", "HTTP #{r.estado}: " + utf8_to_latin1(m))
+    end
+    texto = json_path_str(j, "choices.0.message.content")
+    return Contestacion(utf8_to_latin1(texto), json_get_str(j, "model"), "")
+end

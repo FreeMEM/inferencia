@@ -1,0 +1,17 @@
+# F0 contra tests/servidor_falso.py (puerto 40900): una pregunta con tildes, la misma sin clave (401) y un
+# puerto cerrado.
+
+import "../src/openrouter.dash"
+
+Main
+    url = "http://127.0.0.1:40900/api/v1/chat/completions"
+    c = preguntar(url, "clave-falsa", "modelo/prueba", "¿Qué tal, Amiga?")
+    Print "con clave: [#{c.error}] #{c.texto} (#{c.modelo})"
+    c = preguntar(url, "", "modelo/prueba", "hola")
+    Print "sin clave: #{c.error}"
+    c = preguntar("http://127.0.0.1:40909/api/v1/chat/completions", "x", "m", "hola")
+    hay = c.error != ""
+    Print "cerrado: #{hay}"
+    red_terminar()
+    Print "fin"
+end
