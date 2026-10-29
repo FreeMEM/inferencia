@@ -1,0 +1,9 @@
+[
+  {"texto": "Primero escribo el fichero.",
+   "llamadas": [["escribir", {"fichero": "DH0:Prueba/nuevo.txt", "contenido": "Hola desde Inferencia\nLínea dos con ñ\n"}]]},
+  {"llamadas": [["editar", {"fichero": "DH0:Prueba/nuevo.txt", "buscar": "Línea dos", "cambiar": "Segunda línea"}]]},
+  {"llamadas": [["editar", {"fichero": "DH0:Prueba/nuevo.txt", "buscar": "Hola", "cambiar": "Saludos"}]]},
+  {"llamadas": [["orden", {"orden": "Echo no debería salir"}]]},
+  {"llamadas": [["leer", {"fichero": "DH0:Prueba/nuevo.txt"}]]},
+  {"texto": "Hecho. El fichero queda así:\n\n```\n{resultado}\n```"}
+]

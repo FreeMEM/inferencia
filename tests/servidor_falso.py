@@ -7,10 +7,14 @@ de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 - Con herramientas, si el último mensaje es del usuario y dice "LLAMA nombre {json}", pide esa herramienta con
   esos argumentos (varias si hay varias líneas así).
 - Con herramientas, si el último mensaje es el resultado de una: "Resultado de <id>: <contenido>".
+- "GUION nombre" en la pregunta sigue tests/guiones/<nombre>.json: una lista de turnos, cada uno
+  {"llamadas": [["nombre", {argumentos}], ...]} o {"texto": "..."}. El turno es el número de respuestas que
+  lleva el modelo desde la última pregunta; en el texto, {resultado} es el contenido del último resultado.
 
     python3 tests/servidor_falso.py [puerto]      # 40900 por defecto, en 127.0.0.1
 """
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -50,6 +54,10 @@ class Falso(BaseHTTPRequestHandler):
         except (ValueError, KeyError, IndexError) as e:
             self._contestar(400, {"error": {"message": f"petición mal formada: {e}", "code": 400}})
             return
+        guion = self._guion(peticion["messages"])
+        if guion:
+            self._contestar_guion(peticion, guion)
+            return
         mensaje = {"role": "assistant", "content": f"Recibido: «{pregunta}» ✓"}
         if pregunta.startswith("MARKDOWN"):
             mensaje["content"] = MARKDOWN
@@ -72,6 +80,39 @@ class Falso(BaseHTTPRequestHandler):
             "model": peticion.get("model", "") + " (falso)",
             "choices": [{"index": 0, "finish_reason": fin, "message": mensaje}],
             "usage": {"prompt_tokens": len(peticion["messages"]) * 10, "completion_tokens": 5, "total_tokens": 0},
+        })
+
+    def _guion(self, mensajes):
+        """El guion de la última pregunta y el turno: (turnos, número), o None"""
+        ultima = max(i for i, m in enumerate(mensajes) if m["role"] in ("user", "system"))
+        texto = mensajes[ultima].get("content") or ""
+        if mensajes[ultima]["role"] != "user" or not texto.startswith("GUION "):
+            return None
+        nombre = texto.split()[1]
+        ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guiones", nombre + ".json")
+        with open(ruta, encoding="utf-8") as f:
+            turnos = json.load(f)
+        hechos = sum(1 for m in mensajes[ultima + 1:] if m["role"] == "assistant")
+        return turnos, hechos
+
+    def _contestar_guion(self, peticion, guion):
+        turnos, n = guion
+        mensajes = peticion["messages"]
+        turno = turnos[min(n, len(turnos) - 1)]
+        fin = "stop"
+        if "llamadas" in turno:
+            llamadas = [{"id": f"call_{n}_{i}", "type": "function",
+                         "function": {"name": nombre, "arguments": json.dumps(args, ensure_ascii=False)}}
+                        for i, (nombre, args) in enumerate(turno["llamadas"])]
+            mensaje = {"role": "assistant", "content": turno.get("texto", ""), "tool_calls": llamadas}
+            fin = "tool_calls"
+        else:
+            resultado = mensajes[-1]["content"] if mensajes[-1]["role"] == "tool" else ""
+            mensaje = {"role": "assistant", "content": turno["texto"].replace("{resultado}", resultado)}
+        self._contestar(200, {
+            "id": "gen-falso", "model": peticion.get("model", "") + " (falso)",
+            "choices": [{"index": 0, "finish_reason": fin, "message": mensaje}],
+            "usage": {"prompt_tokens": len(mensajes) * 10, "completion_tokens": 5, "total_tokens": 0},
         })
 
     def _contestar(self, estado, datos):

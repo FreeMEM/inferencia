@@ -289,6 +289,20 @@ func vista_responder(texto: String)
     end
 end
 
+# Los centros de los botones que se ven, desde la esquina de la ventana: "x,y x,y..." (para las pruebas)
+func vista_botones_ventana() -> String
+    r = ""
+    i = 0
+    while i < _boton_n.length
+        if r != ""
+            r = r + " "
+        end
+        r = r + "#{_zona_x + (_boton_x1[i] + _boton_x2[i]) / 2},#{_zona_y + (_boton_y1[i] + _boton_y2[i]) / 2}"
+        i = i + 1
+    end
+    return r
+end
+
 # El botón (su número, desde 0) en x, y de la zona; -1 si no hay ninguno ahí
 func vista_boton_en(x: Int, y: Int) -> Int
     i = 0

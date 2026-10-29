@@ -11,6 +11,10 @@
 # segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
 # vista a esa línea después de la respuesta. ENV:INFERENCIA_PRUEBA_PERMISO (Si, No o Siempre) contesta solo a los
 # permisos, tres segundos después de preguntar.
+#
+# Con ENV:INFERENCIA_SONDA, para un programa que hace de usuario (tests/clics.dash): ENV:INFERENCIA_ESTADO dice
+# qué hace (libre, pidiendo, "permiso N" con N la vez que pregunta, orden) y ENV:INFERENCIA_BOTONES dónde están los botones ("x,y x,y...",
+# desde la esquina de la ventana).
 
 import "config.dash"
 import "openrouter.dash"
@@ -33,6 +37,7 @@ const CIERRE_PRUEBA_TICS = 50
 const PERMISO_PRUEBA_TICS = 60
 const MAX_VUELTAS = 25       # peticiones seguidas con herramientas antes de parar
 const LINEAS_SALIDA = 12     # de la salida de una orden, las que se ven
+const NO_PERMITIDO = "El usuario no lo ha permitido."
 
 const LIBRE = 0
 const PIDIENDO = 1
@@ -55,6 +60,28 @@ var tokens_entrada: Int = 0
 var tokens_salida: Int = 0
 var barra_valor: Int = -1
 var tics_cierre: Int = -1
+var sonda: Bool = false
+var sonda_estado: String = ""
+var sonda_botones: String = "-"
+var permisos_pedidos: Int = 0
+
+func publicar_sonda()
+    var nombres: [String] = ["libre", "pidiendo", "permiso", "orden"]
+    e = nombres[estado]
+    if estado == PERMISO
+        e = e + " #{permisos_pedidos}"
+    end
+    b = vista_botones_ventana()
+    # los botones, antes que el estado: quien espera "permiso" ya los encuentra
+    if b != sonda_botones
+        sonda_botones = b
+        env_set("INFERENCIA_BOTONES", b, false)
+    end
+    if e != sonda_estado
+        sonda_estado = e
+        env_set("INFERENCIA_ESTADO", e, false)
+    end
+end
 
 func dibujar(x: Int, y: Int, ancho: Int, alto: Int)
     vista_dibujar(x, y, ancho, alto)
@@ -157,6 +184,7 @@ func seguir()
         if herramienta_pide_permiso(l)
             var botones: [String] = ["Sí", "No", "Siempre"]
             vista_botones(botones)
+            permisos_pedidos = permisos_pedidos + 1
             poner_estado(PERMISO)
             tics_permiso = PERMISO_PRUEBA_TICS
             refrescar()
@@ -192,7 +220,7 @@ func resultado(r: String)
     conv_resultado(conv, l.id, r)
     if str_starts(r, "Error")
         vista_anadir(QUIEN_AVISO, r)
-    elif l.nombre == "orden"
+    elif l.nombre == "orden" and r != NO_PERMITIDO
         lineas = str_split(str_trim(r), "\n")
         s = "Salida"
         i = 0
@@ -224,7 +252,7 @@ func responder_permiso(n: Int)
     l = pendientes[indice]
     if n == 1
         vista_responder("No")
-        resultado("El usuario no lo ha permitido.")
+        resultado(NO_PERMITIDO)
         seguir()
         return
     end
@@ -323,6 +351,8 @@ Main
         herramientas_declarar(conv)
         vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
         mui_window_open(v.window)
+        mui_set_active(v.window, v.entrada)
+        sonda = env_get("INFERENCIA_SONDA") != ""
         poner_estado(LIBRE)
         ajustar_barra()
         mui_timer(TIC_QUIETO_MS, EV_TIC)
@@ -352,6 +382,7 @@ Main
                     mui_set_text(v.entrada, "")
                     enviar(texto)
                 end
+                mui_set_active(v.window, v.entrada)
             elif ev == EV_PARAR
                 parar()
             elif ev == EV_BARRA
@@ -379,6 +410,9 @@ Main
                 refrescar()
             end
             ajustar_barra()
+            if sonda
+                publicar_sonda()
+            end
         end
         if estado == PIDIENDO and carga != nil
             http_cancelar(carga)

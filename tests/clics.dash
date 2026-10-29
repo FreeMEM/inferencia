@@ -1,0 +1,116 @@
+# Hace de usuario de Inferencia en el emulador, por input.device: escribe "GUION ficheros", contesta a los
+# permisos con clics en los botones (Sí, Siempre, No) y comprueba el fichero que queda. Sale por el menú.
+# Lo arranca tests/clics.sh; Inferencia, con ENV:INFERENCIA_SONDA, dice su estado y dónde están los botones.
+
+const ESPERA_DECIMAS = 900    # 90 segundos como mucho para cada paso
+const SI = 0
+const NO = 1
+const SIEMPRE = 2
+const ESPERADO = "Saludos desde Inferencia\nSegunda línea con ñ\n"
+
+var fallos: Int = 0
+var registro: String = ""
+
+# A DH0:Prueba/clics.txt, no a la consola: su ventana se pondría delante y los clics caerían en ella
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/clics.txt", registro)
+end
+
+func fallo(texto: String)
+    anotar("FALLO: " + texto)
+    fallos = fallos + 1
+end
+
+# Los input_* van a la ventana activa
+func activar() -> Bool
+    if input_active_title() != "Inferencia"
+        w = window_find("Inferencia")
+        if w != 0
+            window_found_activate(w)
+            time_delay(10)
+        end
+    end
+    return input_active_title() == "Inferencia"
+end
+
+func esperar_estado(e: String) -> Bool
+    n = 0
+    while n < ESPERA_DECIMAS
+        if env_get("INFERENCIA_ESTADO") == e
+            return true
+        end
+        time_delay(5)
+        n = n + 1
+    end
+    fallo("no llega a \"" + e + "\" (está en \"" + env_get("INFERENCIA_ESTADO") + "\")")
+    return false
+end
+
+# Espera la pregunta número n y pulsa ese botón
+func contestar(n: Int, boton: Int) -> Bool
+    if not esperar_estado("permiso #{n}")
+        return false
+    end
+    b = str_split(env_get("INFERENCIA_BOTONES"), " ")
+    if b.length != 3
+        fallo("botones: \"" + env_get("INFERENCIA_BOTONES") + "\"")
+        return false
+    end
+    xy = str_split(b[boton], ",")
+    # un momento para la captura de los botones
+    time_delay(100)
+    if not activar()
+        fallo("la ventana de Inferencia no se activa")
+        return false
+    end
+    input_click(Int(xy[0]), Int(xy[1]), 0)
+    anotar("pulsado el botón #{boton} de la pregunta #{n}")
+    return true
+end
+
+func preparar() -> Bool
+    n = 0
+    while n < ESPERA_DECIMAS
+        if env_get("INFERENCIA_ESTADO") == "libre" and activar()
+            return true
+        end
+        time_delay(5)
+        n = n + 1
+    end
+    fallo("la ventana de Inferencia no aparece")
+    return false
+end
+
+Main
+    if preparar()
+        time_delay(25)
+        input_text("GUION ficheros")
+        input_key(0x44, 0)
+        anotar("enviado")
+        if contestar(1, SI) and contestar(2, SIEMPRE) and contestar(3, NO)
+            if esperar_estado("libre")
+                anotar("libre")
+                t = file_read_text("DH0:Prueba/nuevo.txt")
+                if t == nil
+                    fallo("no está DH0:Prueba/nuevo.txt")
+                elif t != ESPERADO
+                    fallo("el fichero tiene: " + t)
+                else
+                    anotar("fichero bien")
+                end
+            end
+        end
+        # para la captura del final
+        time_delay(250)
+    end
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    activar()
+    # Salir: por el menú y, si no, con Amiga-Q
+    if not input_menu(0, 2, 5)
+        anotar("el menú no está; Amiga-Q")
+        input_key(0x10, 8)
+    end
+end

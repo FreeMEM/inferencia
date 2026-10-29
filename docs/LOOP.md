@@ -64,7 +64,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - `leer`, `listar`, `buscar`, `escribir`, `editar` y `orden`.
   - Permisos "Sí", "No" y "Siempre" dentro de la conversación.
   - Topes de tamaño. Bucle hasta que el modelo acaba.
-- [ ] I5 Pruebas del bucle:
+- [x] I5 Pruebas del bucle:
   - El servidor falso con guiones de llamadas a herramientas.
   - Tests en FS-UAE que pulsan y comprueban los ficheros cambiados.
   - Una prueba real con un modelo `:free` que use herramientas.
@@ -155,3 +155,11 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   y leer, con Sí, Siempre y No; el fichero queda con "Segunda línea con ñ". El clic real en los botones queda
   para I5 (aquí contesta `INFERENCIA_PRUEBA_PERMISO`). Una captura salió mezclada al tomarse a media copia de
   pantalla; repetida cinco veces, sale igual.
+- 2026-10-30, I5: el servidor falso sigue guiones (`tests/guiones/*.json`, "GUION nombre"). `tests/clics.sh`
+  arranca `tests/clics.dash`, que hace de usuario por input.device: escribe en la línea de entrada (ahora es el
+  objeto activo de la ventana), pulsa Sí, Siempre y No en los botones dibujados y comprueba el fichero que
+  queda. Inferencia, con `ENV:INFERENCIA_SONDA`, dice su estado y dónde están los botones. Pasa: "TODO BIEN".
+  `input_menu` no encuentra el menú de la ventana MUI (da false); se sale con Amiga-Q. Mirarlo al probar los
+  menús de Forja y, si es de Dash, encargarlo a dashc. Prueba real (`REAL=nvidia/nemotron-3.5-lightning:free`):
+  el modelo usó listar y leer en DH0:Prueba y contestó con los dos ficheros y el texto de la nota, con tildes.
+  La clave no quedó en ningún temporal. Tras un "No" a una orden ya no sale "Salida".

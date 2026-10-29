@@ -7,6 +7,15 @@ La ventana, con captura: `tests/ventana.sh <worktree de Dash> "pregunta" captura
 - `LINEA=n`: la vista sube a esa línea después de la respuesta.
 - `PERMISO=Si` (o `No`, `Siempre`): contesta solo a los permisos, a los tres segundos.
 - `TIEMPO=s`: el tope del emulador (150 s por defecto).
+- `REAL=modelo`: contra OpenRouter de verdad (solo modelos `:free`), con la clave de
+  `~/.config/inferencia/openrouter`, que va solo a la copia temporal del sistema.
+- En `DH0:Prueba` están la pregunta y lo que haya en `tests/prueba/`.
+
+Con un usuario de prueba: `tests/clics.sh <worktree de Dash> [captura.png segundos...]`. `tests/clics.dash`
+escribe "GUION ficheros", pulsa los botones Sí, Siempre y No con el ratón (input.device), comprueba el fichero
+y sale con Amiga-Q. Lo que anota sale al final; si todo fue bien, "TODO BIEN".
+
+Guiones del servidor falso: `tests/guiones/<nombre>.json`, que se eligen con "GUION nombre" en la pregunta.
 - Con herramientas: cada línea `LLAMA nombre {json}` de la pregunta hace que el servidor falso pida esa
   herramienta. Después contesta con el resultado de la última; si es `leer`, se ve el fichero en la respuesta.
 
