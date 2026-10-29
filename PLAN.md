@@ -10,7 +10,7 @@ operativo igual que Claude Code en un PC:
 Siempre pide permiso antes de cambiar algo.
 
 Es un programa independiente y sirve para cualquier tarea, no solo para programar. Se integra por ARexx con Forja, el IDE
-de Dash, que es otra aplicación (plan aparte, `~/Projects/forja/PLAN.md`), y con cualquier otro programa.
+de Dash, que es otra aplicación ([plan aparte](https://github.com/FreeMEM/forja)), y con cualquier otro programa.
 
 Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon:
 - Nada de `@native`, porque Dash 2.0 no lo admite en programas de usuario. Lo que falte va a Dash como builtin
@@ -109,7 +109,7 @@ Detalles:
 
 ## Piezas de Dash
 
-Encargadas a la sesión `dashc`. Hechas en la rama `ide-piezas`, todavía sin fusionar:
+Hechas en la rama `ide-piezas` de Dash, todavía sin fusionar:
 1. JSON: `lib/json.dash`.
 2. Ejecutar una orden y recoger su salida: `run_capture`, `run_rc`, y la versión sin bloquear `run_start`.
 3. Listar un directorio: `dir_read` y `dir_entry_*`.
