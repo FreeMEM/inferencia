@@ -9,8 +9,8 @@ operativo igual que Claude Code en un PC:
 
 Siempre pide permiso antes de cambiar algo.
 
-Es un programa independiente y sirve para cualquier tarea, no solo para programar. Se integra por ARexx con el IDE
-de Dash, que es otra aplicación (plan aparte, `~/Projects/ide-dash/PLAN.md`), y con cualquier otro programa.
+Es un programa independiente y sirve para cualquier tarea, no solo para programar. Se integra por ARexx con Forja, el IDE
+de Dash, que es otra aplicación (plan aparte, `~/Projects/forja/PLAN.md`), y con cualquier otro programa.
 
 Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon:
 - Nada de `@native`, porque Dash 2.0 no lo admite en programas de usuario. Lo que falte va a Dash como builtin
