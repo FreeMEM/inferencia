@@ -39,7 +39,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
    - Si algo cambia el plan, cambiar `PLAN.md`.
 7. **Textos**: README, mensajes y textos de los programas, llanos y sin coletillas. Castellano primero, inglés
    en catálogo.
-8. **Seguir**: pasar a la siguiente vuelta sin pausas.
+8. **Capturas para el usuario**: cuando una tarea cambie algo que se ve, mandarle la captura del emulador con
+   SendUserFile, con una línea de qué se ve. Las capturas se guardan en el scratchpad, no en el repo.
+9. **Seguir**: pasar a la siguiente vuelta sin pausas.
 
 ## Tareas
 
