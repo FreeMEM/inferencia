@@ -109,24 +109,20 @@ Detalles:
 
 ## Piezas de Dash
 
-Hechas en la rama `ide-piezas` de Dash, todavía sin fusionar:
-1. JSON: `lib/json.dash`.
-2. Ejecutar una orden y recoger su salida: `run_capture`, `run_rc`, y la versión sin bloquear `run_start`.
-3. Listar un directorio: `dir_read` y `dir_entry_*`.
-4. Variables de entorno: `env_get` y `env_set`.
-
-Pendientes:
-5. `http.dash` y `red.dash` de Tachyon a `lib/` de Dash. Además, que un programa de fuera del repo de Dash
-   encuentre `lib/` al importar.
-6. **ARexx como cliente**: mandar una orden a un puerto y recoger el resultado y el código. Listar los
-   puertos públicos.
-7. **ARexx como servidor en MUI**: órdenes propias en el puerto de la aplicación MUI.
-8. **Información del sistema**: tareas en marcha, volúmenes y asignaciones. Las de Trasfondo, si ya están
-   como builtins.
+Están todas, en la rama `ide-piezas` de Dash, todavía sin fusionar:
+- JSON: `lib/json.dash`.
+- Red y HTTPS: `lib/red/http.dash`, con `http_pedir`.
+- Órdenes con su salida: `run_capture` y `run_start`.
+- Directorios: `dir_read`.
+- Entorno: `env_get` y `env_set`.
+- ARexx como cliente: `rexx_send`, `ports_read`.
+- ARexx como servidor en MUI: `mui_app_rexx`.
+- Sistema: `tasks_read`, `assigns_read`, `disks_read`.
 
 ## Fases
 
-- **F0**: un "hola" a OpenRouter desde FS-UAE. Comprueba TLS, cabeceras, UTF-8 y tiempos.
+- **F0** (hecha salvo la respuesta real, falta la clave): un "hola" a OpenRouter desde FS-UAE. TLS, cabeceras,
+  UTF-8 y errores comprobados. Con un 68020 a su velocidad, el saludo de TLS no acaba en un minuto.
 - **F1**: la ventana con la conversación y las herramientas de ficheros y órdenes, con permisos. Es la
   primera versión usable.
 - **F2**: ARexx (cliente, servidor y la herramienta `arexx`) y las herramientas de sistema, entorno y
