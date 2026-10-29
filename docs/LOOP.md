@@ -47,7 +47,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 
 ### Inferencia: hasta la primera versión usable
 
-- [ ] I1 Estructura:
+- [x] I1 Estructura:
   - `src/main.dash`.
   - Configuración: proveedor, URL, clave y modelo. Se leen de `ENV:` y `ENVARC:Inferencia/`.
   - En `src/openrouter.dash`, la conversación como lista de mensajes y las herramientas en formato OpenAI
@@ -128,3 +128,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 ## Bitácora
 
 - 2026-10-29: F0 hecha (respuesta real de OpenRouter en FS-UAE). Piezas de Dash 1 a 10 en la rama `ide-piezas`.
+- 2026-10-30, I1: `src/config.dash` (ENV:Inferencia/url, clave, modelo), `src/openrouter.dash` con la conversación,
+  las herramientas (tool_calls) y la petición sin esperar, `src/main.dash` en el Shell. El servidor falso pide
+  herramientas ("LLAMA nombre {json}"). `tests/prueba_conversacion.dash` en FS-UAE: dos llamadas, sus resultados
+  y la respuesta, también sin esperar; la "ñ" va y vuelve.

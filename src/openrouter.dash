@@ -1,14 +1,186 @@
-# Preguntas a un proveedor con el formato de OpenAI Chat Completions (OpenRouter, OpenAI, Ollama...).
+# Conversación con un proveedor con el formato de OpenAI Chat Completions (OpenRouter, OpenAI, Ollama...),
+# con herramientas.
 #
-#   c = preguntar("https://openrouter.ai/api/v1/chat/completions", clave, "openrouter/auto", "Hola")
-#   if c.error == ""
-#       Print c.texto                  # en Latin-1, para la consola del Amiga
+#   c = conv_nueva("Eres Inferencia, un asistente en un Amiga.")
+#   conv_herramienta(c, "leer", "Lee un fichero", "{\"type\":\"object\",\"properties\":{...}}")
+#   conv_usuario(c, "¿Qué hay en S:Startup-Sequence?")
+#   t = conv_pedir(c, cfg)                      # esperando; sin esperar: conv_empezar y conv_acabar
+#   for l in t.llamadas                         # el modelo quiere usar herramientas
+#       conv_resultado(c, l.id, ejecutar(l))    # el resultado de cada una, y conv_pedir otra vez
 #   end
+#   Print t.texto                               # cuando t.llamadas está vacía, la respuesta
 #
-# La pregunta llega en Latin-1 (la consola) y se manda en UTF-8; la respuesta vuelve a Latin-1.
+# Dentro, todo va en UTF-8, como la API. Lo que escribe el usuario (Latin-1) pasa por conv_usuario; t.texto y
+# los argumentos de las llamadas (llamada_str) vuelven en Latin-1.
 
 import "lib/red/http.dash"
 import "lib/json.dash"
+import "config.dash"
+
+const ESPERA_PETICION = 300000
+
+struct Conversacion
+    mensajes: Json        # la lista de mensajes, tal como va a la API
+    herramientas: Json    # la lista de herramientas (formato "function")
+end
+
+struct Llamada
+    id: String
+    nombre: String
+    argumentos: Json      # el objeto de argumentos; vacío si el modelo mandó algo que no es JSON
+    crudo: String         # los argumentos tal como llegaron (UTF-8)
+end
+
+struct Turno
+    texto: String         # lo que dice el modelo, en Latin-1
+    llamadas: [Llamada]   # las herramientas que quiere usar (vacía si ha acabado)
+    fin: String           # finish_reason: "stop", "tool_calls", "length"...
+    modelo: String
+    entrada: Int          # tokens de entrada y de salida de este turno
+    salida: Int
+    error: String         # "" si fue bien
+end
+
+func conv_nueva(sistema: String) -> Conversacion
+    c = Conversacion(json_array(), json_array())
+    if sistema != ""
+        _conv_mensaje(c, "system", latin1_to_utf8(sistema))
+    end
+    return c
+end
+
+func _conv_mensaje(c: Conversacion, rol: String, texto: String)
+    m = json_object()
+    json_set_str(m, "role", rol)
+    json_set_str(m, "content", texto)
+    json_push(c.mensajes, m)
+end
+
+# Una herramienta que el modelo puede pedir. esquema es el JSON Schema de sus argumentos, como texto.
+func conv_herramienta(c: Conversacion, nombre: String, descripcion: String, esquema: String)
+    f = json_object()
+    json_set_str(f, "name", nombre)
+    json_set_str(f, "description", latin1_to_utf8(descripcion))
+    p = json_parse(latin1_to_utf8(esquema))
+    if p == nil
+        p = json_object()
+        json_set_str(p, "type", "object")
+    end
+    json_set(f, "parameters", p)
+    h = json_object()
+    json_set_str(h, "type", "function")
+    json_set(h, "function", f)
+    json_push(c.herramientas, h)
+end
+
+# Lo que escribe el usuario (en Latin-1)
+func conv_usuario(c: Conversacion, texto: String)
+    _conv_mensaje(c, "user", latin1_to_utf8(texto))
+end
+
+# El resultado de una herramienta (en Latin-1), para la llamada id
+func conv_resultado(c: Conversacion, id: String, texto: String)
+    m = json_object()
+    json_set_str(m, "role", "tool")
+    json_set_str(m, "tool_call_id", id)
+    json_set_str(m, "content", latin1_to_utf8(texto))
+    json_push(c.mensajes, m)
+end
+
+# Cuántos mensajes lleva (el de sistema incluido)
+func conv_longitud(c: Conversacion) -> Int
+    return json_length(c.mensajes)
+end
+
+func _conv_cuerpo(c: Conversacion, modelo: String) -> String
+    p = json_object()
+    json_set_str(p, "model", modelo)
+    json_set(p, "messages", c.mensajes)
+    if json_length(c.herramientas) > 0
+        json_set(p, "tools", c.herramientas)
+    end
+    return json_write(p)
+end
+
+func _conv_cabeceras(cfg: Config) -> String
+    cabeceras = "X-Title: Inferencia\r\nHTTP-Referer: https://github.com/FreeMEM/inferencia"
+    if cfg.clave != ""
+        cabeceras = "Authorization: Bearer " + cfg.clave + "\r\n" + cabeceras
+    end
+    return cabeceras
+end
+
+func _turno_error(e: String) -> Turno
+    var ls: [Llamada] = []
+    return Turno("", ls, "", "", 0, 0, e)
+end
+
+# Manda la conversación sin esperar: http_avanzar(carga) hasta que dé true, y luego conv_acabar
+func conv_empezar(c: Conversacion, cfg: Config) -> Carga
+    return http_empezar_metodo(cfg.url, "POST", _conv_cuerpo(c, cfg.modelo), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+end
+
+# La respuesta de una carga ya acabada. Si fue bien, el mensaje del modelo se añade a la conversación.
+func conv_acabar(c: Conversacion, carga: Carga) -> Turno
+    return _conv_leer(c, carga.respuesta)
+end
+
+# Manda la conversación y espera la respuesta
+func conv_pedir(c: Conversacion, cfg: Config) -> Turno
+    r = http_pedir(cfg.url, "POST", _conv_cuerpo(c, cfg.modelo), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+    return _conv_leer(c, r)
+end
+
+func _conv_leer(c: Conversacion, r: Respuesta) -> Turno
+    if r.error != ""
+        return _turno_error(r.error)
+    end
+    j = json_parse(r.cuerpo)
+    if j == nil
+        return _turno_error("HTTP #{r.estado}: la respuesta no es JSON (#{json_error()})")
+    end
+    if r.estado != 200 or json_has(j, "error")
+        m = json_path_str(j, "error.message")
+        if m == ""
+            m = "sin explicación"
+        end
+        return _turno_error("HTTP #{r.estado}: " + utf8_to_latin1(m))
+    end
+    msj = json_path(j, "choices.0.message")
+    if msj == nil
+        return _turno_error("la respuesta no trae ningún mensaje")
+    end
+    # el mensaje vuelve tal cual a la conversación (con sus tool_calls), como pide la API
+    json_push(c.mensajes, msj)
+
+    var ls: [Llamada] = []
+    lista = json_get(msj, "tool_calls")
+    n = json_length(lista)
+    i = 0
+    while i < n
+        tc = json_at(lista, i)
+        i = i + 1
+        crudo = json_path_str(tc, "function.arguments")
+        a = json_parse(crudo)
+        if a == nil
+            a = json_object()
+        end
+        ls.push(Llamada(json_get_str(tc, "id"), json_path_str(tc, "function.name"), a, crudo))
+    end
+    t = Turno(utf8_to_latin1(json_get_str(msj, "content")), ls, json_path_str(j, "choices.0.finish_reason"), json_get_str(j, "model"), json_path_int(j, "usage.prompt_tokens"), json_path_int(j, "usage.completion_tokens"), "")
+    return t
+end
+
+# Un argumento de texto de una llamada, en Latin-1 ("" si no está)
+func llamada_str(l: Llamada, nombre: String) -> String
+    return utf8_to_latin1(json_get_str(l.argumentos, nombre))
+end
+
+func llamada_int(l: Llamada, nombre: String) -> Int
+    return json_get_int(l.argumentos, nombre)
+end
+
+# --- Una pregunta suelta (la prueba F0) ---
 
 struct Contestacion
     texto: String
@@ -17,31 +189,8 @@ struct Contestacion
 end
 
 func preguntar(url: String, clave: String, modelo: String, pregunta: String) -> Contestacion
-    mensaje = json_object()
-    json_set_str(mensaje, "role", "user")
-    json_set_str(mensaje, "content", latin1_to_utf8(pregunta))
-    mensajes = json_array()
-    json_push(mensajes, mensaje)
-    peticion = json_object()
-    json_set_str(peticion, "model", modelo)
-    json_set(peticion, "messages", mensajes)
-
-    cabeceras = "X-Title: Inferencia"
-    if clave != ""
-        cabeceras = "Authorization: Bearer " + clave + "\r\n" + cabeceras
-    end
-    r = http_pedir(url, "POST", json_write(peticion), "application/json", cabeceras, 120000)
-    if r.error != ""
-        return Contestacion("", "", r.error)
-    end
-    j = json_parse(r.cuerpo)
-    if j == nil
-        return Contestacion("", "", "HTTP #{r.estado}: la respuesta no es JSON (#{json_error()})")
-    end
-    if r.estado != 200
-        m = json_path_str(j, "error.message")
-        return Contestacion("", "", "HTTP #{r.estado}: " + utf8_to_latin1(m))
-    end
-    texto = json_path_str(j, "choices.0.message.content")
-    return Contestacion(utf8_to_latin1(texto), json_get_str(j, "model"), "")
+    c = conv_nueva("")
+    conv_usuario(c, pregunta)
+    t = conv_pedir(c, Config(url, clave, modelo))
+    return Contestacion(t.texto, t.modelo, t.error)
 end

@@ -1,0 +1,41 @@
+# La configuración de Inferencia: proveedor, clave y modelo.
+#
+# Se lee de ENV: (lo que el sistema copia de ENVARC: al arrancar). config_guardar la deja también en ENVARC:.
+#   ENV:Inferencia/url      la dirección del proveedor (formato de OpenAI Chat Completions)
+#   ENV:Inferencia/clave    la clave; si no está, ENV:OPENROUTER_API_KEY
+#   ENV:Inferencia/modelo   el modelo
+# Las variables sueltas INFERENCIA_URL e INFERENCIA_MODELO (de la prueba F0) también valen.
+
+const URL_OPENROUTER = "https://openrouter.ai/api/v1/chat/completions"
+const MODELO_DEFECTO = "openrouter/auto"
+
+struct Config
+    url: String
+    clave: String
+    modelo: String
+end
+
+func _config_una(nombre: String, suelta: String, defecto: String) -> String
+    v = env_get("Inferencia/" + nombre)
+    if v == "" and suelta != ""
+        v = env_get(suelta)
+    end
+    if v == ""
+        v = defecto
+    end
+    return str_trim(v)
+end
+
+func config_leer() -> Config
+    url = _config_una("url", "INFERENCIA_URL", URL_OPENROUTER)
+    clave = _config_una("clave", "OPENROUTER_API_KEY", "")
+    modelo = _config_una("modelo", "INFERENCIA_MODELO", MODELO_DEFECTO)
+    return Config(url, clave, modelo)
+end
+
+# Guarda la configuración en ENV: y en ENVARC:
+func config_guardar(c: Config)
+    env_set("Inferencia/url", c.url, true)
+    env_set("Inferencia/clave", c.clave, true)
+    env_set("Inferencia/modelo", c.modelo, true)
+end

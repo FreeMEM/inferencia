@@ -1,0 +1,27 @@
+# I1 contra tests/servidor_falso.py (puerto 40900): una conversación con herramientas. El modelo falso pide dos
+# llamadas, se le devuelven los resultados y contesta; la misma petición sin esperar (conv_empezar).
+
+import "../src/openrouter.dash"
+
+Main
+    cfg = Config("http://127.0.0.1:40900/api/v1/chat/completions", "clave-falsa", "modelo/prueba")
+    c = conv_nueva("Sistema de prueba")
+    conv_herramienta(c, "leer", "Lee un fichero", "{\"type\":\"object\",\"properties\":{\"ruta\":{\"type\":\"string\"}},\"required\":[\"ruta\"]}")
+    conv_usuario(c, "LLAMA leer {\"ruta\":\"S:Startup-Sequence\"}\nLLAMA leer {\"ruta\":\"Trabajo:año.txt\"}")
+    t = conv_pedir(c, cfg)
+    Print "turno 1: [#{t.error}] fin=#{t.fin} llamadas=#{t.llamadas.length} tokens=#{t.entrada}"
+    for l in t.llamadas
+        Print "  #{l.id} #{l.nombre} " + llamada_str(l, "ruta")
+        conv_resultado(c, l.id, "contenido de " + llamada_str(l, "ruta"))
+    end
+    carga = conv_empezar(c, cfg)
+    while not http_avanzar(carga)
+        time_delay(1)
+    end
+    t = conv_acabar(c, carga)
+    Print "turno 2: [#{t.error}] fin=#{t.fin} llamadas=#{t.llamadas.length}"
+    Print "  " + t.texto
+    Print "mensajes: #{conv_longitud(c)}"
+    red_terminar()
+    Print "fin"
+end

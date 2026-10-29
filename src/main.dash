@@ -1,0 +1,29 @@
+# Inferencia: la IA en el Amiga.
+#
+# Por ahora (I1), en el Shell: una pregunta y su respuesta, con la configuración de config.dash.
+#   Inferencia "¿Qué es un Amiga?"
+# La ventana MUI llega en I2.
+
+import "config.dash"
+import "openrouter.dash"
+
+const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas."
+
+Main
+    cfg = config_leer()
+    pregunta = arg(0)
+    if pregunta == ""
+        Print "Uso: Inferencia \"pregunta\""
+    else
+        c = conv_nueva(SISTEMA)
+        conv_usuario(c, pregunta)
+        t = conv_pedir(c, cfg)
+        if t.error != ""
+            Print "Error: " + t.error
+        else
+            Print t.texto
+            Print "(#{t.modelo}, #{t.entrada} + #{t.salida} tokens)"
+        end
+    end
+    red_terminar()
+end

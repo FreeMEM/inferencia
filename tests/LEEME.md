@@ -3,7 +3,7 @@
 De momento se compila con el Dash 2.0 de la rama `ide-piezas` de FreeMEMLang (`./dash`), que trae
 `lib/json.dash` y `lib/red/`.
 
-Contra el OpenRouter falso, sin gastar:
+Contra el OpenRouter falso, sin gastar (`prueba_falsa` y `prueba_conversacion`):
 
 ```sh
 python3 tests/servidor_falso.py 40900 &
