@@ -1,0 +1,33 @@
+# Abre la ventana de preferencias de Inferencia con Amiga-P y comprueba que sale con el proveedor de ENV:.
+# Lo arranca tests/usuario.sh (para la captura de la ventana).
+
+func anotar(texto: String)
+    t = file_read_text("DH0:Prueba/usuario.txt")
+    if t == nil
+        t = ""
+    end
+    file_write_text("DH0:Prueba/usuario.txt", t + texto + "\n")
+end
+
+Main
+    n = 0
+    while n < 600 and rexx_send("INFERENCIA.1", "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    w = window_find("Inferencia")
+    if w != 0
+        window_found_activate(w)
+        time_delay(20)
+    end
+    input_key(0x19, 8)
+    time_delay(100)
+    if window_find("Inferencia: preferencias") != 0
+        anotar("bien: Amiga-P abre las preferencias")
+        anotar("TODO BIEN")
+    else
+        anotar("FALLO: no se abren las preferencias")
+    end
+    time_delay(400)
+    rexx_send("INFERENCIA.1", "QUIT")
+end

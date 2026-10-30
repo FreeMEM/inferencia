@@ -13,6 +13,9 @@
 # líneas siguientes) también; NUEVA, MOSTRAR y OCULTAR; GUARDAR fichero y CARGAR fichero (la conversación, en JSON);
 # COSTE ("tokens_de_entrada tokens_de_salida millonésimas_de_dólar"); MENSAJES (cuántos lleva).
 #
+# Preferencias (Amiga-P): proveedor, dirección, clave, modelo y tope; Usar las deja hasta reiniciar, Guardar también
+# en ENVARC:.
+#
 # La conversación se reenvía entera en cada petición. Si pasa de ENV:Inferencia/tope caracteres (60000), se quitan
 # los resultados viejos de las herramientas y, si aún pasa, se pide al modelo un resumen de lo anterior.
 #
@@ -41,6 +44,11 @@ const EV_TIC = 5
 const EV_NUEVA = 20
 const EV_GUARDAR = 21
 const EV_ABRIR = 22
+const EV_PREFERENCIAS = 23
+const EV_PREF_GUARDAR = 40
+const EV_PREF_USAR = 41
+const EV_PREF_CANCELAR = 42
+const EV_PREF_PROVEEDOR = 43
 const TOPE_CONVERSACION = 60000   # caracteres; ENV:Inferencia/tope lo cambia
 const EV_SALIR = 99
 const TIC_MS = 50            # mientras pasa algo
@@ -57,6 +65,7 @@ const PERMISO = 2
 const ORDEN = 3
 
 var v: Principal = nil
+var pref: Preferencias = nil
 var app: Int = 0
 var ultima_respuesta: String = ""
 var ultimo_error: String = ""
@@ -197,7 +206,7 @@ func resumir_si_hace_falta() -> Bool
 end
 
 func al_resumir()
-    t = conv_acabar(resumiendo, carga)
+    t = conv_acabar(resumiendo, carga, cfg)
     carga = nil
     resumiendo = nil
     tokens_entrada = tokens_entrada + t.entrada
@@ -218,7 +227,7 @@ func al_llegar()
         al_resumir()
         return
     end
-    t = conv_acabar(conv, carga)
+    t = conv_acabar(conv, carga, cfg)
     carga = nil
     if t.error != ""
         vista_anadir(QUIEN_AVISO, "Error: " + t.error)
@@ -427,6 +436,61 @@ func nueva_conversacion()
     tokens_salida = 0
     coste = 0
     poner_estado(LIBRE)
+    refrescar()
+end
+
+# --- Preferencias ---
+
+func _indice_proveedor(p: String) -> Int
+    i = 0
+    for n in str_split(PROVEEDORES, "|")
+        if n == p
+            return i
+        end
+        i = i + 1
+    end
+    return 0
+end
+
+func preferencias_abrir()
+    mui_set_value(pref.proveedor, _indice_proveedor(cfg.proveedor))
+    mui_set_text(pref.url, cfg.url)
+    # la clave no se enseña: el campo es para una nueva
+    mui_set_text(pref.clave, "")
+    mui_set_text(pref.modelo, str_trim(mui_get_text(v.modelo)))
+    mui_set_text(pref.tope, env_get("Inferencia/tope"))
+    mui_window_open(pref.window)
+end
+
+# Al cambiar de proveedor, su dirección (si la que había era la de otro proveedor)
+func preferencias_proveedor()
+    nuevo = str_split(PROVEEDORES, "|")[mui_get_value(pref.proveedor)]
+    url = str_trim(mui_get_text(pref.url))
+    for p in str_split(PROVEEDORES, "|")
+        if url == "" or url == config_url_de(p)
+            mui_set_text(pref.url, config_url_de(nuevo))
+        end
+    end
+end
+
+# Usar (guardar = false) o Guardar (también en ENVARC:)
+func preferencias_aplicar(guardar: Bool)
+    cfg.proveedor = str_split(PROVEEDORES, "|")[mui_get_value(pref.proveedor)]
+    cfg.url = str_trim(mui_get_text(pref.url))
+    if cfg.url == ""
+        cfg.url = config_url_de(cfg.proveedor)
+    end
+    nueva = str_trim(mui_get_text(pref.clave))
+    if nueva != ""
+        cfg.clave = nueva
+    end
+    mui_set_text(pref.clave, "")
+    cfg.modelo = str_trim(mui_get_text(pref.modelo))
+    mui_set_text(v.modelo, cfg.modelo)
+    config_guardar(cfg, guardar)
+    env_set("Inferencia/tope", str_trim(mui_get_text(pref.tope)), guardar)
+    mui_window_close(pref.window)
+    vista_anadir(QUIEN_AVISO, "Proveedor: " + cfg.proveedor + ", " + cfg.url + ".")
     refrescar()
 end
 
@@ -642,6 +706,7 @@ Main
         Print "Inferencia necesita MUI y un 68020 o mejor."
     else
         v = Principal_create()
+        pref = Preferencias_create()
         mui_set_text(v.modelo, cfg.modelo)
         mui_canvas_on_draw(v.conversacion, dibujar)
         mui_canvas_on_input(v.conversacion, EV_LIENZO)
@@ -702,6 +767,14 @@ Main
                 end
             elif ev == EV_NUEVA
                 nueva_conversacion()
+            elif ev == EV_PREFERENCIAS
+                preferencias_abrir()
+            elif ev == EV_PREF_PROVEEDOR
+                preferencias_proveedor()
+            elif ev == EV_PREF_GUARDAR or ev == EV_PREF_USAR
+                preferencias_aplicar(ev == EV_PREF_GUARDAR)
+            elif ev == EV_PREF_CANCELAR
+                mui_window_close(pref.window)
             elif ev == EV_GUARDAR
                 if file_save_dialog("Guardar la conversación", "#?.json")
                     guardar_conversacion(file_fullpath())

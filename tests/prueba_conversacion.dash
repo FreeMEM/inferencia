@@ -18,7 +18,7 @@ Main
     while not http_avanzar(carga)
         time_delay(1)
     end
-    t = conv_acabar(c, carga)
+    t = conv_acabar(c, carga, cfg)
     Print "turno 2: [#{t.error}] fin=#{t.fin} llamadas=#{t.llamadas.length}"
     Print "  " + t.texto
     Print "mensajes: #{conv_longitud(c)}"

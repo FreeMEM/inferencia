@@ -19,6 +19,10 @@ el programa a la vez que Inferencia (con `ENV:INFERENCIA_SONDA`) y enseña lo qu
 - `tests/sistema.dash` (con `SIN_PERMISO="entorno,portapapeles,orden echo"` y sin `PERMISO`): las herramientas
   sistema, entorno y portapapeles, y la lista de lo que no pide permiso.
 - `tests/memoria.dash`: COSTE, GUARDAR y CARGAR la conversación, y el resumen cuando pasa del tope.
+- `tests/proveedor.dash`: una pregunta y una herramienta con otro proveedor: `PROVEEDOR=anthropic
+  URL=http://127.0.0.1:40900/v1/messages` (el servidor falso habla Anthropic Messages ahí) o `PROVEEDOR=openai
+  URL=http://127.0.0.1:40900/ollama/v1/chat/completions` (sin clave, como Ollama).
+- `tests/preferencias.dash`: abre la ventana de preferencias con Amiga-P (para la captura).
 - `tests/juntos.dash` (con `PERMISO=Si` y `FORJA=~/Projects/forja`, que arranca Forja a la vez): Inferencia edita
   y lee un fichero abierto en Forja, y Amiga-I en Forja le manda el fichero.
 - `tests/clics.sh <worktree de Dash> [captura.png segundos...]`, que es `usuario.sh` con `tests/clics.dash`. `tests/clics.dash`

@@ -7,6 +7,7 @@
 #   PERMISO=Si tests/usuario.sh ...   # Inferencia contesta sola a los permisos (Si, No o Siempre)
 #   FORJA=~/Projects/forja tests/usuario.sh ...   # con Forja abierta a la vez (DH0:Prueba/juego)
 #   SIN_PERMISO="entorno,orden echo" tests/usuario.sh ...   # ENV:Inferencia/sin_permiso
+#   PROVEEDOR=anthropic URL=http://127.0.0.1:40900/v1/messages tests/usuario.sh ...   # otro proveedor
 set -e
 dash=$1; usuario=$2; shift 2
 png=""
@@ -27,7 +28,8 @@ if [ -n "$FORJA" ]; then
 fi
 {
   echo "C:MakeDir ENV:Inferencia"
-  echo "C:SetEnv Inferencia/url http://127.0.0.1:40900/api/v1/chat/completions"
+  echo "C:SetEnv Inferencia/url ${URL:-http://127.0.0.1:40900/api/v1/chat/completions}"
+  [ -z "$PROVEEDOR" ] || echo "C:SetEnv Inferencia/proveedor $PROVEEDOR"
   echo "C:SetEnv Inferencia/clave clave-falsa"
   echo "C:SetEnv Inferencia/modelo modelo/prueba"
   echo "SetEnv INFERENCIA_SONDA 1"

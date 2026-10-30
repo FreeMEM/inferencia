@@ -2,6 +2,7 @@
 """Un OpenRouter falso para probar Inferencia sin gastar: contesta a POST /api/v1/chat/completions en el formato
 de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 
+- En /v1/messages habla el formato de Anthropic Messages (lo traduce y usa lo mismo); en /ollama/... no pide clave.
 - Si el mensaje de sistema empieza por "Resume", contesta con un resumen fijo.
 - Sin herramientas en la petición: repite la pregunta. Si la pregunta empieza por "MARKDOWN", contesta con un
   texto de ejemplo en Markdown (para probar cómo se ve).
@@ -42,14 +43,64 @@ end
 Y un párrafo final con una palabra muy larga: https://github.com/FreeMEM/inferencia/blob/main/PLAN.md"""
 
 
+def anthropic_a_openai(p):
+    """Una petición de Anthropic Messages, como la de OpenAI (para reutilizar lo de abajo)"""
+    mensajes = []
+    if p.get("system"):
+        mensajes.append({"role": "system", "content": p["system"]})
+    for m in p["messages"]:
+        contenido = m["content"]
+        if isinstance(contenido, str):
+            mensajes.append({"role": m["role"], "content": contenido})
+            continue
+        textos = [b["text"] for b in contenido if b["type"] == "text"]
+        if m["role"] == "assistant":
+            a = {"role": "assistant", "content": "".join(textos)}
+            usos = [b for b in contenido if b["type"] == "tool_use"]
+            if usos:
+                a["tool_calls"] = [{"id": b["id"], "type": "function",
+                                    "function": {"name": b["name"], "arguments": json.dumps(b["input"], ensure_ascii=False)}}
+                                   for b in usos]
+            mensajes.append(a)
+        else:
+            for b in contenido:
+                if b["type"] == "tool_result":
+                    mensajes.append({"role": "tool", "tool_call_id": b["tool_use_id"], "content": b["content"]})
+            if textos:
+                mensajes.append({"role": "user", "content": "".join(textos)})
+    return {"model": p.get("model", ""), "messages": mensajes, "tools": p.get("tools") or []}
+
+
+def openai_a_anthropic(d):
+    """Una respuesta de OpenAI, como la de Anthropic Messages"""
+    m = d["choices"][0]["message"]
+    bloques = []
+    if m.get("content"):
+        bloques.append({"type": "text", "text": m["content"]})
+    for tc in m.get("tool_calls") or []:
+        bloques.append({"type": "tool_use", "id": tc["id"], "name": tc["function"]["name"],
+                        "input": json.loads(tc["function"]["arguments"] or "{}")})
+    return {"id": "msg-falso", "type": "message", "role": "assistant", "model": d["model"], "content": bloques,
+            "stop_reason": "tool_use" if m.get("tool_calls") else "end_turn",
+            "usage": {"input_tokens": d["usage"]["prompt_tokens"], "output_tokens": d["usage"]["completion_tokens"]}}
+
+
 class Falso(BaseHTTPRequestHandler):
     def do_POST(self):
         cuerpo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        if not self.headers.get("Authorization", "").startswith("Bearer "):
+        # /v1/messages: Anthropic (x-api-key y anthropic-version); /ollama/...: sin clave, como Ollama en casa
+        self.anthropic = self.path.endswith("/v1/messages")
+        if self.anthropic:
+            if not self.headers.get("x-api-key") or not self.headers.get("anthropic-version"):
+                self._contestar(401, {"error": {"message": "invalid x-api-key", "code": 401}})
+                return
+        elif not self.path.startswith("/ollama/") and not self.headers.get("Authorization", "").startswith("Bearer "):
             self._contestar(401, {"error": {"message": "No auth credentials found", "code": 401}})
             return
         try:
             peticion = json.loads(cuerpo)
+            if self.anthropic:
+                peticion = anthropic_a_openai(peticion)
             ultimo = peticion["messages"][-1]
             pregunta = ultimo["content"]
         except (ValueError, KeyError, IndexError) as e:
@@ -132,6 +183,11 @@ class Falso(BaseHTTPRequestHandler):
         })
 
     def _contestar(self, estado, datos):
+        if getattr(self, "anthropic", False):
+            if estado == 200:
+                datos = openai_a_anthropic(datos)
+            else:
+                datos = {"type": "error", "error": {"type": "error", "message": datos["error"]["message"]}}
         cuerpo = json.dumps(datos, ensure_ascii=False).encode("utf-8")
         self.send_response(estado)
         self.send_header("Content-Type", "application/json; charset=utf-8")

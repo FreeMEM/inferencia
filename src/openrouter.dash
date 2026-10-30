@@ -1,5 +1,5 @@
-# Conversación con un proveedor con el formato de OpenAI Chat Completions (OpenRouter, OpenAI, Ollama...),
-# con herramientas.
+# Conversación con un proveedor con el formato de OpenAI Chat Completions (OpenRouter, OpenAI, Ollama...) o el de
+# Anthropic Messages (cfg.proveedor), con herramientas.
 #
 #   c = conv_nueva("Eres Inferencia, un asistente en un Amiga.")
 #   conv_herramienta(c, "leer", "Lee un fichero", "{\"type\":\"object\",\"properties\":{...}}")
@@ -108,11 +108,173 @@ func _conv_cuerpo(c: Conversacion, modelo: String) -> String
 end
 
 func _conv_cabeceras(cfg: Config) -> String
+    if cfg.proveedor == "anthropic"
+        return "x-api-key: " + cfg.clave + "\r\nanthropic-version: 2023-06-01"
+    end
     cabeceras = "X-Title: Inferencia\r\nHTTP-Referer: https://github.com/FreeMEM/inferencia"
     if cfg.clave != ""
         cabeceras = "Authorization: Bearer " + cfg.clave + "\r\n" + cabeceras
     end
     return cabeceras
+end
+
+func _conv_cuerpo_de(c: Conversacion, cfg: Config) -> String
+    if cfg.proveedor == "anthropic"
+        return _anth_cuerpo(c, cfg.modelo)
+    end
+    return _conv_cuerpo(c, cfg.modelo)
+end
+
+# --- Anthropic Messages: la conversación se guarda como la de OpenAI y se traduce al mandarla y al recibirla ---
+
+const ANTH_MAX_TOKENS = 4096
+
+# Añade un bloque al último mensaje si es del mismo rol; si no, un mensaje nuevo (Anthropic quiere roles
+# alternos: los resultados de varias herramientas van juntos en un mensaje del usuario)
+func _anth_bloque(mensajes: Json, rol: String, bloque: Json)
+    n = json_length(mensajes)
+    if n > 0
+        ultimo = json_at(mensajes, n - 1)
+        if json_get_str(ultimo, "role") == rol
+            json_push(json_get(ultimo, "content"), bloque)
+            return
+        end
+    end
+    m = json_object()
+    json_set_str(m, "role", rol)
+    bloques = json_array()
+    json_push(bloques, bloque)
+    json_set(m, "content", bloques)
+    json_push(mensajes, m)
+end
+
+func _anth_texto(t: String) -> Json
+    b = json_object()
+    json_set_str(b, "type", "text")
+    json_set_str(b, "text", t)
+    return b
+end
+
+func _anth_cuerpo(c: Conversacion, modelo: String) -> String
+    p = json_object()
+    json_set_str(p, "model", modelo)
+    json_set_int(p, "max_tokens", ANTH_MAX_TOKENS)
+    mensajes = json_array()
+    n = json_length(c.mensajes)
+    i = 0
+    while i < n
+        m = json_at(c.mensajes, i)
+        rol = json_get_str(m, "role")
+        contenido = json_get_str(m, "content")
+        if rol == "system"
+            json_set_str(p, "system", contenido)
+        elif rol == "user"
+            _anth_bloque(mensajes, "user", _anth_texto(contenido))
+        elif rol == "tool"
+            b = json_object()
+            json_set_str(b, "type", "tool_result")
+            json_set_str(b, "tool_use_id", json_get_str(m, "tool_call_id"))
+            json_set_str(b, "content", contenido)
+            _anth_bloque(mensajes, "user", b)
+        elif rol == "assistant"
+            if contenido != ""
+                _anth_bloque(mensajes, "assistant", _anth_texto(contenido))
+            end
+            llamadas = json_get(m, "tool_calls")
+            k = 0
+            while llamadas != nil and k < json_length(llamadas)
+                tc = json_at(llamadas, k)
+                b = json_object()
+                json_set_str(b, "type", "tool_use")
+                json_set_str(b, "id", json_get_str(tc, "id"))
+                json_set_str(b, "name", json_path_str(tc, "function.name"))
+                entrada = json_parse(json_path_str(tc, "function.arguments"))
+                if entrada == nil
+                    entrada = json_object()
+                end
+                json_set(b, "input", entrada)
+                _anth_bloque(mensajes, "assistant", b)
+                k = k + 1
+            end
+        end
+        i = i + 1
+    end
+    json_set(p, "messages", mensajes)
+    if json_length(c.herramientas) > 0
+        hs = json_array()
+        k = 0
+        while k < json_length(c.herramientas)
+            f = json_get(json_at(c.herramientas, k), "function")
+            h = json_object()
+            json_set_str(h, "name", json_get_str(f, "name"))
+            json_set_str(h, "description", json_get_str(f, "description"))
+            json_set(h, "input_schema", json_get(f, "parameters"))
+            json_push(hs, h)
+            k = k + 1
+        end
+        json_set(p, "tools", hs)
+    end
+    return json_write(p)
+end
+
+# Una respuesta de Anthropic, pasada a un mensaje como los de OpenAI (que es lo que guarda la conversación)
+func _anth_leer(c: Conversacion, r: Respuesta) -> Turno
+    if r.error != ""
+        return _turno_error(r.error)
+    end
+    j = json_parse(r.cuerpo)
+    if j == nil
+        return _turno_error("HTTP #{r.estado}: la respuesta no es JSON (#{json_error()})")
+    end
+    if r.estado != 200 or json_get_str(j, "type") == "error"
+        m = json_path_str(j, "error.message")
+        if m == ""
+            m = "sin explicación"
+        end
+        return _turno_error("HTTP #{r.estado}: " + utf8_to_latin1(m))
+    end
+    texto = ""
+    var ls: [Llamada] = []
+    llamadas = json_array()
+    bloques = json_get(j, "content")
+    k = 0
+    while bloques != nil and k < json_length(bloques)
+        b = json_at(bloques, k)
+        tipo = json_get_str(b, "type")
+        if tipo == "text"
+            texto = texto + json_get_str(b, "text")
+        elif tipo == "tool_use"
+            entrada = json_get(b, "input")
+            if entrada == nil
+                entrada = json_object()
+            end
+            crudo = json_write(entrada)
+            ls.push(Llamada(json_get_str(b, "id"), json_get_str(b, "name"), entrada, crudo))
+            tc = json_object()
+            json_set_str(tc, "id", json_get_str(b, "id"))
+            json_set_str(tc, "type", "function")
+            f = json_object()
+            json_set_str(f, "name", json_get_str(b, "name"))
+            json_set_str(f, "arguments", crudo)
+            json_set(tc, "function", f)
+            json_push(llamadas, tc)
+        end
+        k = k + 1
+    end
+    msj = json_object()
+    json_set_str(msj, "role", "assistant")
+    json_set_str(msj, "content", texto)
+    if json_length(llamadas) > 0
+        json_set(msj, "tool_calls", llamadas)
+    end
+    json_push(c.mensajes, msj)
+    fin = json_get_str(j, "stop_reason")
+    if fin == "tool_use"
+        fin = "tool_calls"
+    elif fin == "max_tokens"
+        fin = "length"
+    end
+    return Turno(utf8_to_latin1(texto), ls, fin, json_get_str(j, "model"), json_path_int(j, "usage.input_tokens"), json_path_int(j, "usage.output_tokens"), "", 0)
 end
 
 func _turno_error(e: String) -> Turno
@@ -122,17 +284,23 @@ end
 
 # Manda la conversación sin esperar: http_avanzar(carga) hasta que dé true, y luego conv_acabar
 func conv_empezar(c: Conversacion, cfg: Config) -> Carga
-    return http_empezar_metodo(cfg.url, "POST", _conv_cuerpo(c, cfg.modelo), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+    return http_empezar_metodo(cfg.url, "POST", _conv_cuerpo_de(c, cfg), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
 end
 
 # La respuesta de una carga ya acabada. Si fue bien, el mensaje del modelo se añade a la conversación.
-func conv_acabar(c: Conversacion, carga: Carga) -> Turno
+func conv_acabar(c: Conversacion, carga: Carga, cfg: Config) -> Turno
+    if cfg.proveedor == "anthropic"
+        return _anth_leer(c, carga.respuesta)
+    end
     return _conv_leer(c, carga.respuesta)
 end
 
 # Manda la conversación y espera la respuesta
 func conv_pedir(c: Conversacion, cfg: Config) -> Turno
-    r = http_pedir(cfg.url, "POST", _conv_cuerpo(c, cfg.modelo), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+    r = http_pedir(cfg.url, "POST", _conv_cuerpo_de(c, cfg), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+    if cfg.proveedor == "anthropic"
+        return _anth_leer(c, r)
+    end
     return _conv_leer(c, r)
 end
 

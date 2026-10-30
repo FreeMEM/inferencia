@@ -13,6 +13,7 @@
             { "label": "Conversación nueva", "key": "N", "event": 20 },
             { "label": "Abrir conversación...", "key": "O", "event": 22 },
             { "label": "Guardar conversación...", "key": "S", "event": 21 },
+            { "label": "Preferencias...", "key": "P", "event": 23 },
             { "separator": true },
             { "label": "Salir", "key": "Q", "event": 99 }
           ]
@@ -42,6 +43,43 @@
               { "type": "string", "name": "entrada", "text": "", "max": 4000, "ack": 1, "weight": 400 },
               { "type": "button", "name": "enviar", "label": "_Enviar", "event": 1 },
               { "type": "button", "name": "parar", "label": "_Parar", "event": 2, "disabled": true }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Preferencias",
+      "title": "Inferencia: preferencias",
+      "id": 2,
+      "close": 42,
+      "root": {
+        "type": "vgroup",
+        "children": [
+          {
+            "type": "columns",
+            "columns": 2,
+            "children": [
+              { "type": "label", "text": "Proveedor:" },
+              { "type": "cycle", "name": "proveedor", "options": "OpenRouter|Anthropic|OpenAI y compatibles", "change": 43 },
+              { "type": "label", "text": "Dirección:" },
+              { "type": "string", "name": "url", "text": "", "max": 300 },
+              { "type": "label", "text": "Clave nueva:" },
+              { "type": "string", "name": "clave", "text": "", "max": 300 },
+              { "type": "label", "text": "Modelo:" },
+              { "type": "string", "name": "modelo", "text": "", "max": 200 },
+              { "type": "label", "text": "Tope:" },
+              { "type": "string", "name": "tope", "text": "", "max": 10 }
+            ]
+          },
+          { "type": "text", "name": "nota", "text": "Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir." },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "button", "name": "guardar", "label": "_Guardar", "event": 40 },
+              { "type": "button", "name": "usar", "label": "_Usar", "event": 41 },
+              { "type": "space" },
+              { "type": "button", "name": "cancelar", "label": "_Cancelar", "event": 42 }
             ]
           }
         ]

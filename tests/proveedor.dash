@@ -1,0 +1,61 @@
+# Una pregunta y un ciclo de herramienta (el guion puertos) con el proveedor que se haya puesto en
+# ENV:Inferencia/proveedor y url (tests/usuario.sh con PROVEEDOR y URL): para Anthropic Messages y para uno
+# compatible con OpenAI sin clave (Ollama). Por ARexx.
+
+const PUERTO = "INFERENCIA.1"
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func rexx(orden: String) -> String
+    return rexx_send(PUERTO, orden)
+end
+
+func respuesta() -> String
+    n = 0
+    time_delay(10)
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    r = rexx("RESPUESTA")
+    if rexx_rc() != 0
+        return "(error, rc #{rexx_rc()})"
+    end
+    return r
+end
+
+Main
+    n = 0
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    anotar("proveedor: " + env_get("Inferencia/proveedor") + " " + env_get("Inferencia/url"))
+    rexx("PREGUNTA hola, ¿qué tal?")
+    r = respuesta()
+    ver("una pregunta", str_contains(r, "hola, ¿qué tal?"), r)
+    rexx("PREGUNTA GUION puertos")
+    r = respuesta()
+    ver("una herramienta y su resultado", str_contains(r, "INFERENCIA.1"), r)
+    ver("tokens", not str_starts(rexx("COSTE"), "0 "), rexx("COSTE"))
+    time_delay(100)
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    rexx("QUIT")
+end

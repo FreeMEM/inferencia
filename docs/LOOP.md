@@ -121,8 +121,8 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Topes por herramienta.
   - Guardar y cargar la conversación.
   - Resumir cuando crece.
-- [ ] I9 Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
-- [ ] I10 Más proveedores (Anthropic Messages, Ollama) y una ventana de preferencias.
+- [ ] I9 (espera las piezas 20 y 21 de dashc) Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
+- [x] I10 Más proveedores (Anthropic Messages, Ollama) y una ventana de preferencias.
 - [ ] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
 - [ ] I11 y F10 Acabado:
   - Catálogos en inglés e iconos.
@@ -258,3 +258,13 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   resultados viejos de las herramientas y, si no basta, el modelo resume lo anterior a la pregunta nueva.
   `tests/memoria.dash` en FS-UAE: "TODO BIEN". No probado con el coste real de OpenRouter (los modelos :free no
   cuestan). `c = nil` sin tipo perdía la conversación cargada: pieza 19 a dashc (que avise al compilar).
+- 2026-10-30, I9 parada: leer una respuesta HTTP según llega (SSE con chunked) y un campo MUI de varias líneas
+  no están en Dash: piezas 20 (`http_empezar_flujo`, `http_flujo_leer`) y 21 (`mui_text_editor`) pedidas a dashc.
+- 2026-10-30, I10: ENV:Inferencia/proveedor (openrouter, anthropic, openai). Anthropic Messages: la conversación
+  sigue en formato OpenAI y se traduce al mandar (system aparte, bloques text, tool_use y tool_result, roles
+  alternos, tools con input_schema, x-api-key y anthropic-version) y al recibir (stop_reason, usage). "openai" vale
+  para Ollama y LM Studio, sin clave. Ventana de preferencias (Amiga-P): proveedor, dirección, clave (no se enseña;
+  vacía deja la de ahora), modelo y tope; Usar o Guardar (ENVARC:). El servidor falso habla Anthropic en
+  /v1/messages y acepta /ollama/ sin clave. `tests/proveedor.dash` en FS-UAE: "TODO BIEN" con los dos;
+  `arexx.dash` sigue bien. No probado contra la API de Anthropic de verdad (cuesta dinero). Compilado con una copia
+  de ide-piezas f1a082c (la carpeta tenía cambios a medias de dashc).

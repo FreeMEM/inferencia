@@ -102,7 +102,10 @@ aplicar cambios que se pueden deshacer y compilar.
 - **Primero, OpenRouter**, con el formato de OpenAI Chat Completions. Con una clave tienes cientos de modelos,
   Claude incluido, y algunos gratis con límite diario.
 - **Ese mismo formato** sirve para OpenAI, DeepSeek, Groq, y Ollama o LM Studio en casa.
-- **Después, Anthropic Messages**, para la API de Claude directa.
+- **Anthropic Messages**, para la API de Claude directa: la conversación se guarda como la de OpenAI y se traduce
+  al mandarla y al recibirla.
+- Se eligen en Preferencias (Amiga-P): proveedor, dirección, clave (no se enseña: el campo es para una nueva),
+  modelo y tope. Usar las deja hasta reiniciar; Guardar, también en `ENVARC:`.
 - Los planes de suscripción (Claude Pro/Max) no se pueden usar fuera de Claude Code y claude.ai.
 
 Detalles:
