@@ -39,7 +39,7 @@ import "herramientas.dash"
 import "vista.dash"
 import "ventana.dashui"
 
-const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas. Tienes herramientas para leer, buscar y cambiar ficheros y para ejecutar órdenes del Shell; úsalas cuando hagan falta. Las rutas son de AmigaOS (SYS:, S:, Work:Cajón/fichero)."
+const SISTEMA = "Eres Inferencia, un asistente que funciona en un Amiga con AmigaOS 3. Contesta en el idioma del usuario, con frases cortas. Tienes herramientas para leer, buscar y cambiar ficheros y para ejecutar órdenes del Shell; úsalas cuando hagan falta. Las rutas son de AmigaOS (SYS:, S:, Work:Cajón/fichero). Un guion ARexx empieza siempre con un comentario /* ... */ en la primera línea: sin él, rx dice Program not found."
 
 const EV_ENVIAR = 1
 const EV_PARAR = 2
