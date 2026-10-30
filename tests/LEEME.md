@@ -11,7 +11,12 @@ La ventana, con captura: `tests/ventana.sh <worktree de Dash> "pregunta" captura
   `~/.config/inferencia/openrouter`, que va solo a la copia temporal del sistema.
 - En `DH0:Prueba` están la pregunta y lo que haya en `tests/prueba/`.
 
-Con un usuario de prueba: `tests/clics.sh <worktree de Dash> [captura.png segundos...]`. `tests/clics.dash`
+Con un usuario de prueba: `tests/usuario.sh <worktree de Dash> <programa.dash> [captura.png segundos...]` arranca
+el programa a la vez que Inferencia (con `ENV:INFERENCIA_SONDA`) y enseña lo que anotó en `DH0:Prueba/usuario.txt`;
+`PERMISO=Si` contesta solo a los permisos.
+
+- `tests/arexx.dash` (con `PERMISO=Si`): el puerto ARexx entero y las herramientas puertos y arexx.
+- `tests/clics.sh <worktree de Dash> [captura.png segundos...]`, que es `usuario.sh` con `tests/clics.dash`. `tests/clics.dash`
 escribe "GUION ficheros", pulsa los botones Sí, Siempre y No con el ratón (input.device), comprueba el fichero
 y sale con Amiga-Q. Lo que anota sale al final; si todo fue bien, "TODO BIEN".
 

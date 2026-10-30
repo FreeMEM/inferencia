@@ -1,0 +1,5 @@
+[
+  {"llamadas": [["arexx", {"puerto": "NOEXISTE.1", "orden": "VERSION"}]]},
+  {"llamadas": [["arexx", {"puerto": "inferencia.1", "orden": "ESTADO"}]]},
+  {"texto": "ARexx: {resultado}"}
+]

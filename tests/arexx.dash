@@ -1,0 +1,78 @@
+# Maneja Inferencia por su puerto ARexx (INFERENCIA.1): ESTADO, PREGUNTA, RESPUESTA, CONTEXTO, NUEVA, OCULTAR y
+# MOSTRAR, y las herramientas puertos y arexx con los guiones del servidor falso. Sale con QUIT.
+# Lo arranca tests/usuario.sh (con PERMISO=Si); anota en DH0:Prueba/usuario.txt.
+
+const PUERTO = "INFERENCIA.1"
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func rexx(orden: String) -> String
+    return rexx_send(PUERTO, orden)
+end
+
+# Espera a que Inferencia acabe (ESTADO libre) y da su RESPUESTA
+func respuesta() -> String
+    n = 0
+    time_delay(10)
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    return rexx("RESPUESTA")
+end
+
+Main
+    # el puerto aparece al arrancar
+    n = 0
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    ver("el puerto contesta ESTADO", rexx("ESTADO") == "libre", "rc #{rexx_rc()}")
+    rexx("PREGUNTA \"Hola desde ARexx\"")
+    ver("PREGUNTA sin esperar", rexx_rc() == 0, "rc #{rexx_rc()}")
+    r = respuesta()
+    ver("RESPUESTA", str_contains(r, "Hola desde ARexx"), r)
+    rexx("CONTEXTO DH0:Prueba/notas.txt")
+    ver("CONTEXTO", rexx_rc() == 0, "rc #{rexx_rc()}")
+    rexx("PREGUNTA ¿Qué dice la nota?")
+    r = respuesta()
+    ver("la pregunta lleva el contexto", str_contains(r, "reunión del club") and str_contains(r, "¿Qué dice la nota?"), r)
+    rexx("CONTEXTO DH0:Prueba/noexiste.txt")
+    ver("CONTEXTO de un fichero que no está da RC 10", rexx_rc() == 10, "rc #{rexx_rc()}")
+    rexx("PREGUNTA GUION puertos")
+    r = respuesta()
+    ver("herramienta puertos", str_contains(r, "INFERENCIA.1"), r)
+    rexx("PREGUNTA GUION arexx")
+    r = respuesta()
+    ver("herramienta arexx: no a sí misma", str_contains(r, "no se puede mandar órdenes a sí misma"), r)
+    rexx("NUEVA")
+    ver("NUEVA", rexx_rc() == 0 and rexx("ESTADO") == "libre", "rc #{rexx_rc()}")
+    rexx("OCULTAR")
+    ver("OCULTAR", rexx_rc() == 0, "rc #{rexx_rc()}")
+    time_delay(50)
+    rexx("MOSTRAR")
+    ver("MOSTRAR", rexx_rc() == 0, "rc #{rexx_rc()}")
+    rexx("NOEXISTE")
+    ver("una orden desconocida da RC 10", rexx_rc() == 10, "rc #{rexx_rc()}")
+    time_delay(100)
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    rexx("QUIT")
+end

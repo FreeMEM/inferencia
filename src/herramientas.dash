@@ -1,7 +1,7 @@
-# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar y orden.
+# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar, orden, puertos y arexx.
 #
 #   herramientas_declarar(conv)                # una vez, al empezar la conversación
-#   if herramienta_pide_permiso(l) ...         # escribir, editar y orden, salvo lo aceptado con "Siempre"
+#   if herramienta_pide_permiso(l) ...         # escribir, editar, orden y arexx, salvo lo aceptado con "Siempre"
 #   vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
 #   resultado = herramienta_ejecutar(l)        # todas menos orden, que va con orden_empezar y orden_acabar
 #
@@ -16,6 +16,7 @@ const TOPE_BUSCAR = 100         # líneas encontradas
 const TOPE_FICHEROS = 400       # ficheros mirados al buscar
 const TOPE_TAMANO_BUSCAR = 200000
 const TOPE_SEGUNDOS = 120       # una orden, como mucho
+const PUERTO_PROPIO = "INFERENCIA.1"
 
 # Lo aceptado con "Siempre": nombres de herramienta ("escribir", "editar") y, para orden, la primera palabra
 var permitidos: [String] = []
@@ -26,6 +27,8 @@ func herramientas_declarar(c: Conversacion)
     conv_herramienta(c, "buscar", "Busca un texto (sin mirar mayúsculas) en los ficheros de un cajón y de los cajones de dentro. Da fichero, línea y texto de cada línea que lo tiene.", "{\"type\":\"object\",\"properties\":{\"cajon\":{\"type\":\"string\"},\"texto\":{\"type\":\"string\"}},\"required\":[\"cajon\",\"texto\"]}")
     conv_herramienta(c, "escribir", "Crea un fichero o lo sustituye entero por el contenido. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"}},\"required\":[\"fichero\",\"contenido\"]}")
     conv_herramienta(c, "editar", "Cambia en un fichero un trozo exacto de texto por otro. El trozo tiene que estar una sola vez; si no, da error. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"buscar\":{\"type\":\"string\",\"description\":\"El texto que hay ahora, exacto\"},\"cambiar\":{\"type\":\"string\",\"description\":\"El texto nuevo\"}},\"required\":[\"fichero\",\"buscar\",\"cambiar\"]}")
+    conv_herramienta(c, "puertos", "Lista los puertos ARexx y públicos abiertos: con ellos se sabe a qué programas se les puede mandar órdenes con la herramienta arexx.", "{\"type\":\"object\",\"properties\":{}}")
+    conv_herramienta(c, "arexx", "Manda una orden ARexx al puerto de un programa (como MULTIVIEW.1 o FORJA) y devuelve su resultado y su código. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"puerto\":{\"type\":\"string\"},\"orden\":{\"type\":\"string\",\"description\":\"La orden con sus argumentos, como la escribiría un script\"}},\"required\":[\"puerto\",\"orden\"]}")
     conv_herramienta(c, "orden", "Ejecuta una línea del Shell de AmigaOS y devuelve lo que escribe y su código de retorno. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"orden\":{\"type\":\"string\",\"description\":\"Como se escribe en el Shell, como List SYS: o Version\"},\"segundos\":{\"type\":\"integer\",\"description\":\"Tiempo máximo (60 si no se da)\"}},\"required\":[\"orden\"]}")
 end
 
@@ -38,11 +41,14 @@ func _clave_permiso(l: Llamada) -> String
     if l.nombre == "orden"
         return "orden " + _primera_palabra(llamada_str(l, "orden"))
     end
+    if l.nombre == "arexx"
+        return "arexx " + str_upper(llamada_str(l, "puerto"))
+    end
     return l.nombre
 end
 
 func herramienta_pide_permiso(l: Llamada) -> Bool
-    if l.nombre != "escribir" and l.nombre != "editar" and l.nombre != "orden"
+    if l.nombre != "escribir" and l.nombre != "editar" and l.nombre != "orden" and l.nombre != "arexx"
         return false
     end
     clave = _clave_permiso(l)
@@ -69,6 +75,10 @@ func herramienta_resumen(l: Llamada) -> String
         return "Buscar \"" + llamada_str(l, "texto") + "\" en " + llamada_str(l, "cajon")
     elif l.nombre == "orden"
         return "Orden: " + llamada_str(l, "orden")
+    elif l.nombre == "puertos"
+        return "Puertos ARexx"
+    elif l.nombre == "arexx"
+        return "ARexx a " + llamada_str(l, "puerto") + ": " + llamada_str(l, "orden")
     elif l.nombre == "escribir"
         contenido = llamada_str(l, "contenido")
         r = "Escribir " + llamada_str(l, "fichero") + " (#{contenido.length} caracteres)"
@@ -258,6 +268,36 @@ func _editar(l: Llamada) -> String
     return "Cambiado: " + fichero
 end
 
+func _puertos() -> String
+    n = ports_read()
+    r = ""
+    i = 0
+    while i < n
+        r = r + port_name(i) + "\n"
+        i = i + 1
+    end
+    if r == ""
+        return "(ninguno)"
+    end
+    return r
+end
+
+func _arexx(l: Llamada) -> String
+    puerto = llamada_str(l, "puerto")
+    if str_upper(puerto) == PUERTO_PROPIO
+        return "Error: ese es el puerto de Inferencia; no se puede mandar órdenes a sí misma."
+    end
+    r = rexx_send(puerto, llamada_str(l, "orden"))
+    rc = rexx_rc()
+    if rc == -1
+        return "Error: no hay ningún puerto que se llame " + puerto + ". La herramienta puertos dice cuáles hay."
+    end
+    if rc == -2
+        return "Error: no está rexxsyslib.library."
+    end
+    return _cortar(r, TOPE_SALIDA) + "\n[RC: #{rc}]"
+end
+
 # Todas menos orden (que no debe parar la ventana: orden_empezar)
 func herramienta_ejecutar(l: Llamada) -> String
     if l.nombre == "leer"
@@ -270,6 +310,10 @@ func herramienta_ejecutar(l: Llamada) -> String
         return _escribir(l)
     elif l.nombre == "editar"
         return _editar(l)
+    elif l.nombre == "puertos"
+        return _puertos()
+    elif l.nombre == "arexx"
+        return _arexx(l)
     end
     return "Error: no hay ninguna herramienta que se llame " + l.nombre
 end

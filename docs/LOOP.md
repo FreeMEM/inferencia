@@ -94,7 +94,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 
 ### Integración
 
-- [ ] I6 ARexx en Inferencia:
+- [x] I6 ARexx en Inferencia:
   - Puerto `INFERENCIA` con `PREGUNTA`, `CONTEXTO`, `NUEVA`, `MOSTRAR` y `OCULTAR`.
   - Herramientas `arexx` y `puertos`.
 - [ ] F6 ARexx en Forja:
@@ -207,3 +207,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   Cancelar. Pruebas en FS-UAE, todas "TODO BIEN": `compilar.sh` (compila en 1,4 s con la CPU al máximo, ejecuta
   y escribe "Naves: 2", el clic en el error lleva a la línea 25), `ficheros.sh` (con la petición: la tecla hay
   que pulsarla un momento después de que salga) y `teclas.sh`. Dos capturas salieron a medio dibujar.
+- 2026-10-30, I6: puerto INFERENCIA.1 (`mui_app_rexx`): PREGUNTA (sin esperar: una orden ARexx contesta
+  enseguida), ESTADO, RESPUESTA, CONTEXTO fichero [desde hasta] (va con la siguiente pregunta), NUEVA, MOSTRAR
+  y OCULTAR. Herramientas puertos y arexx (con permiso; no a su propio puerto). `tests/usuario.sh` arranca
+  cualquier usuario de prueba; `tests/arexx.dash` maneja Inferencia solo por ARexx con dos guiones nuevos del
+  servidor falso: "TODO BIEN" en FS-UAE, y `clics.sh` sigue bien. No probado: arexx contra el puerto de otro
+  programa (llega con Forja, F6).

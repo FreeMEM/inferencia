@@ -83,8 +83,11 @@ esa lista la orden que se acaba de aceptar.
 
 ## ARexx
 
-Inferencia tiene su propio puerto, `INFERENCIA`:
-- `PREGUNTA "texto"`: hace la pregunta en la conversación y devuelve la respuesta.
+Inferencia tiene su propio puerto, `INFERENCIA.1`:
+- `PREGUNTA "texto"`: hace la pregunta en la conversación. No espera, porque una orden ARexx tiene que
+  contestar enseguida; si Inferencia está ocupada, da RC 5.
+- `ESTADO`: libre, pidiendo, permiso u orden.
+- `RESPUESTA`: la última respuesta, cuando está libre.
 - `CONTEXTO fichero [desde hasta]`: añade a la conversación un fichero o unas líneas.
 - `NUEVA`: empieza una conversación nueva.
 - `MOSTRAR` y `OCULTAR`: la ventana.

@@ -7,6 +7,10 @@
 # contesta sin pedir más. Las que cambian algo (escribir, editar, orden) preguntan antes con botones dentro de
 # la conversación: Sí, No y Siempre.
 #
+# Puerto ARexx INFERENCIA.1: PREGUNTA "texto" la manda (sin esperar: RC 5 si está ocupada); ESTADO dice libre,
+# pidiendo, permiso u orden; RESPUESTA da la última respuesta cuando está libre (RC 5 si no, 10 si hubo un
+# error); CONTEXTO fichero [desde hasta] lo añade a la siguiente pregunta; NUEVA, MOSTRAR y OCULTAR.
+#
 # Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
 # segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
 # vista a esa línea después de la respuesta. ENV:INFERENCIA_PRUEBA_PERMISO (Si, No o Siempre) contesta solo a los
@@ -45,6 +49,10 @@ const PERMISO = 2
 const ORDEN = 3
 
 var v: Principal = nil
+var app: Int = 0
+var ultima_respuesta: String = ""
+var ultimo_error: String = ""
+var contexto: String = ""       # lo que CONTEXTO añade a la siguiente pregunta
 var cfg: Config = nil
 var conv: Conversacion = nil
 var carga: Carga = nil
@@ -129,7 +137,10 @@ func enviar(texto: String)
     end
     cfg.modelo = str_trim(mui_get_text(v.modelo))
     vista_anadir(QUIEN_USUARIO, texto)
-    conv_usuario(conv, texto)
+    conv_usuario(conv, contexto + texto)
+    contexto = ""
+    ultima_respuesta = ""
+    ultimo_error = ""
     vueltas = 0
     pedir()
 end
@@ -146,6 +157,7 @@ func al_llegar()
     carga = nil
     if t.error != ""
         vista_anadir(QUIEN_AVISO, "Error: " + t.error)
+        ultimo_error = t.error
         poner_estado(LIBRE)
         refrescar()
         return
@@ -156,6 +168,7 @@ func al_llegar()
         vista_anadir(QUIEN_MODELO, t.texto)
     end
     if t.llamadas.length == 0
+        ultima_respuesta = t.texto
         if t.fin == "length"
             vista_anadir(QUIEN_AVISO, "La respuesta se cortó: el modelo llegó a su tope de longitud.")
         end
@@ -337,9 +350,131 @@ func tic()
     end
 end
 
+func nueva_conversacion()
+    parar()
+    conv = conv_nueva(SISTEMA)
+    herramientas_declarar(conv)
+    vista_limpiar()
+    contexto = ""
+    tokens_entrada = 0
+    tokens_salida = 0
+    poner_estado(LIBRE)
+    refrescar()
+end
+
+# --- El puerto ARexx INFERENCIA.1 ---
+
+# El argumento de una orden, sin las comillas de alrededor
+func _argumento(linea: String) -> String
+    p = str_find(linea, " ")
+    if p < 0
+        return ""
+    end
+    a = str_trim(linea[p + 1:])
+    if a.length >= 2 and ((str_starts(a, "\"") and str_ends(a, "\"")) or (str_starts(a, "'") and str_ends(a, "'")))
+        a = a[1:a.length - 1]
+    end
+    return a
+end
+
+# CONTEXTO fichero [desde hasta]: el fichero (o esas líneas) va con la siguiente pregunta
+func _contexto(a: String) -> String
+    fichero = a
+    desde = 0
+    hasta = 0
+    if str_starts(a, "\"")
+        q = str_find_from(a, "\"", 1)
+        if q > 0
+            fichero = a[1:q]
+            a = str_trim(a[q + 1:])
+        else
+            a = ""
+        end
+    else
+        partes = str_split(a, " ")
+        fichero = partes[0]
+        a = str_trim(a[fichero.length:])
+    end
+    if a != ""
+        n = str_split(a, " ")
+        desde = Int(n[0])
+        if n.length > 1
+            hasta = Int(n[1])
+        end
+    end
+    texto = file_read_text(fichero)
+    if texto == nil
+        mui_rexx_fail(10)
+        return ""
+    end
+    lineas = str_split(texto, "\n")
+    que = fichero
+    if desde > 0
+        if hasta < desde or hasta > lineas.length
+            hasta = lineas.length
+        end
+        texto = ""
+        i = desde
+        while i <= hasta
+            texto = texto + lineas[i - 1] + "\n"
+            i = i + 1
+        end
+        que = fichero + ", líneas #{desde} a #{hasta}"
+    end
+    contexto = contexto + "Contexto (" + que + "):\n```\n" + texto + "\n```\n\n"
+    vista_anadir(QUIEN_HERRAMIENTA, "Contexto: " + que)
+    refrescar()
+    return ""
+end
+
+# Las órdenes ARexx que MUI no contesta solo (QUIT, SHOW, HIDE... sí las contesta)
+func orden_rexx(linea: String) -> String
+    orden = str_upper(str_split(str_trim(linea), " ")[0])
+    a = _argumento(linea)
+    if orden == "PREGUNTA"
+        if estado != LIBRE
+            mui_rexx_fail(5)
+            return ""
+        end
+        if a == ""
+            mui_rexx_fail(10)
+            return ""
+        end
+        enviar(a)
+        return ""
+    elif orden == "ESTADO"
+        var nombres: [String] = ["libre", "pidiendo", "permiso", "orden"]
+        return nombres[estado]
+    elif orden == "RESPUESTA"
+        if estado != LIBRE
+            mui_rexx_fail(5)
+            return ""
+        end
+        if ultimo_error != ""
+            mui_rexx_fail(10)
+            return ""
+        end
+        return ultima_respuesta
+    elif orden == "CONTEXTO"
+        return _contexto(a)
+    elif orden == "NUEVA"
+        nueva_conversacion()
+        return ""
+    elif orden == "MOSTRAR"
+        mui_window_open(v.window)
+        return ""
+    elif orden == "OCULTAR"
+        mui_window_close(v.window)
+        return ""
+    end
+    mui_rexx_fail(10)
+    return ""
+end
+
 Main
     cfg = config_leer()
-    if mui_app_begin("Inferencia", "INFERENCIA") == 0
+    app = mui_app_begin("Inferencia", "INFERENCIA")
+    if app == 0
         Print "Inferencia necesita MUI y un 68020 o mejor."
     else
         v = Principal_create()
@@ -347,6 +482,7 @@ Main
         mui_canvas_on_draw(v.conversacion, dibujar)
         mui_canvas_on_input(v.conversacion, EV_LIENZO)
         mui_canvas_buffered(v.conversacion, true)
+        mui_app_rexx(app, orden_rexx)
         conv = conv_nueva(SISTEMA)
         herramientas_declarar(conv)
         vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
@@ -357,13 +493,13 @@ Main
         ajustar_barra()
         mui_timer(TIC_QUIETO_MS, EV_TIC)
 
+        prueba_permiso = env_get("INFERENCIA_PRUEBA_PERMISO")
         pregunta = env_get("INFERENCIA_PRUEBA")
         if str_starts(pregunta, "@")
             pregunta = str_trim(file_read_text(pregunta[1:]))
         end
         if pregunta != ""
             prueba = true
-            prueba_permiso = env_get("INFERENCIA_PRUEBA_PERMISO")
             enviar(pregunta)
         end
 
@@ -400,14 +536,7 @@ Main
                     responder_permiso(vista_boton_en(mui_canvas_mouse_x(v.conversacion), mui_canvas_mouse_y(v.conversacion)))
                 end
             elif ev == EV_NUEVA
-                parar()
-                conv = conv_nueva(SISTEMA)
-                herramientas_declarar(conv)
-                vista_limpiar()
-                tokens_entrada = 0
-                tokens_salida = 0
-                poner_estado(LIBRE)
-                refrescar()
+                nueva_conversacion()
             end
             ajustar_barra()
             if sonda

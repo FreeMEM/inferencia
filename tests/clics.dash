@@ -11,10 +11,10 @@ const ESPERADO = "Saludos desde Inferencia\nSegunda línea con ñ\n"
 var fallos: Int = 0
 var registro: String = ""
 
-# A DH0:Prueba/clics.txt, no a la consola: su ventana se pondría delante y los clics caerían en ella
+# A DH0:Prueba/usuario.txt, no a la consola: su ventana se pondría delante y los clics caerían en ella
 func anotar(texto: String)
     registro = registro + texto + "\n"
-    file_write_text("DH0:Prueba/clics.txt", registro)
+    file_write_text("DH0:Prueba/usuario.txt", registro)
 end
 
 func fallo(texto: String)
@@ -108,9 +108,6 @@ Main
         anotar("TODO BIEN")
     end
     activar()
-    # Salir: por el menú y, si no, con Amiga-Q
-    if not input_menu(0, 2, 5)
-        anotar("el menú no está; Amiga-Q")
-        input_key(0x10, 8)
-    end
+    # Salir con Amiga-Q (input_menu no sirve con los menús de MUI 5)
+    input_key(0x10, 8)
 end
