@@ -1,7 +1,7 @@
 #!/bin/sh
 # El sistema del vídeo (~/.cache/video-inferencia/sys): el de RTG del vídeo de Trasfondo (3.2, uaegfx 1024x768,
 # MUI, AmiSSL, agente) con LightWave, ARexx, Forja, Inferencia y dashc. Sin claves: Inferencia usa Ollama.
-#   preparar.sh DASH_DIR MODELO URL
+#   [LENGUA=en] preparar.sh DASH_DIR MODELO URL
 set -e
 dash=$1; modelo=$2; url=$3
 V=$HOME/.cache/video-inferencia
@@ -19,11 +19,24 @@ cp "$K"/x/C/* "$V/sys/C/"; cp "$K"/x/Libs/* "$V/sys/Libs/"; cp "$K"/x/Rexxc/* "$
 "$dash/dash" "$HOME/Projects/forja/src/main.dash" -o "$V/sys/Programas/Forja"
 cp "$dash/dashc/build/dashc.amiga" "$V/sys/Dash/dashc"
 cp "$dash"/dashc/build/dashc_*.drt "$V/sys/Dash/"
-cp "$(dirname "$0")/ejemplo_mui.dash" "$(dirname "$0")/saludo.dash" "$(dirname "$0")/saludo.dashui" "$V/sys/Hola/"
-printf '# Hola mundo con MUI\n' > "$V/sys/Hola/hola.dash"
-mkdir -p "$V/sys/Encargos"
-iconv -f utf-8 -t latin1 "$(dirname "$0")/encargos/letras.txt" > "$V/sys/Encargos/letras.txt"
-iconv -f utf-8 -t latin1 "$(dirname "$0")/encargos/hola.txt" > "$V/sys/Encargos/hola.txt"
+if [ "$LENGUA" = en ]; then
+  # en inglés: los ficheros de en/ y los catálogos ingleses junto a los programas (el sistema está en inglés)
+  E="$(dirname "$0")/en"
+  rmdir "$V/sys/Hola"; mkdir -p "$V/sys/Hello" "$V/sys/Tasks" "$V/sys/Programas/Catalogs/english"
+  cp "$E/example_mui.dash" "$E/greeting.dash" "$E/greeting.dashui" "$V/sys/Hello/"
+  printf '# Hello world with MUI\n' > "$V/sys/Hello/hello.dash"
+  cp "$E/hello.txt" "$E/letters.txt" "$V/sys/Tasks/"
+  for p in inferencia forja; do
+    python3 "$HOME/Projects/$p/tools/catalogos.py" "$dash" catalog
+    cp "$HOME/Projects/$p"/build/Catalogs/english/*.catalog "$V/sys/Programas/Catalogs/english/"
+  done
+else
+  cp "$(dirname "$0")/ejemplo_mui.dash" "$(dirname "$0")/saludo.dash" "$(dirname "$0")/saludo.dashui" "$V/sys/Hola/"
+  printf '# Hola mundo con MUI\n' > "$V/sys/Hola/hola.dash"
+  mkdir -p "$V/sys/Encargos"
+  iconv -f utf-8 -t latin1 "$(dirname "$0")/encargos/letras.txt" > "$V/sys/Encargos/letras.txt"
+  iconv -f utf-8 -t latin1 "$(dirname "$0")/encargos/hola.txt" > "$V/sys/Encargos/hola.txt"
+fi
 cat > "$V/sys/S/Startup-Sequence" <<EOS
 C:MakeDir RAM:T RAM:ENV RAM:ENV/Sys RAM:Clipboards
 C:Assign ENV: RAM:ENV

@@ -1,0 +1,21 @@
+# Greets you by name. The window comes from greeting.dashui, made in Forja's window editor.
+import "greeting.dashui"
+
+Main
+    if mui_app_begin("Greeting", "GREETING") == 0
+        Print "MUI is not available"
+    else
+        v = Greeting_create()
+        mui_window_open(v.window)
+        while true
+            ev = mui_wait_event()
+            if ev == -1 or ev == 99
+                break
+            end
+            if ev == 1
+                mui_set_text(v.message, "Hello, " + mui_get_text(v.name) + "!")
+            end
+        end
+        mui_app_end()
+    end
+end

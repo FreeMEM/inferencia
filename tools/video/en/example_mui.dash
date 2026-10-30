@@ -1,0 +1,39 @@
+# A first MUI window: a text, a row of buttons and the event loop.
+# Needs MUI 3.8 or 5 installed and a 68020 (MUI 5 for AmigaOS 3).
+
+const ID_HELLO = 1
+const ID_CLEAR = 2
+
+Main
+    if mui_app_begin("Hello MUI", "HELLOMUI") == 0
+        Print "MUI is not available"
+    else
+        win = mui_window_begin("Hello MUI", 1)
+            greeting = mui_text("\33cPress a button")
+            mui_hgroup_begin()
+                hello = mui_button("_Hello")
+                clear = mui_button("_Clear")
+            mui_group_end()
+        mui_window_end()
+        mui_on_press(hello, ID_HELLO)
+        mui_on_press(clear, ID_CLEAR)
+        mui_window_open(win)
+
+        times = 0
+        while true
+            ev = mui_wait_event()
+            if ev == -1
+                break
+            end
+            if ev == ID_HELLO
+                times = times + 1
+                Print "Hello number #{times}"
+            end
+            if ev == ID_CLEAR
+                times = 0
+                Print "Back to zero"
+            end
+        end
+        mui_app_end()
+    end
+end

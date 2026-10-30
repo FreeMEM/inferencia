@@ -1,0 +1,3 @@
+Forja, the Dash IDE, is open with the file DH0:Hello/hello.dash. Write in that file a hello world in Dash with an MUI window: the text "Hello, world!" centered and a "Quit" button that ends the program. First look at the example DH0:Hello/example_mui.dash (it uses mui_app_begin, mui_window_begin, mui_text, mui_button, mui_on_press and mui_wait_event; "\33c" centers a text).
+
+Write it with the escribir tool to DH0:Hello/hello.dash: the text goes into Forja's editor. Then, over ARexx to the port FORJA.1: GUARDAR and then EJECUTAR (builds and runs). Ask ESTADO until it is no longer "compilando"; if ERRORES returns something, fix it and repeat.

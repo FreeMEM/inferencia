@@ -1,0 +1,31 @@
+{
+  "dashui": 1,
+  "windows": [
+    {
+      "name": "Greeting",
+      "title": "Greeting",
+      "id": 1,
+      "close": 99,
+      "root": {
+        "type": "vgroup",
+        "children": [
+          { "type": "text", "name": "message", "text": "Type your name" },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "label", "text": "Name:" },
+              { "type": "string", "name": "name", "text": "", "max": 40, "ack": 1 }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "button", "name": "greet", "label": "_Greet", "event": 1 },
+              { "type": "button", "name": "quit", "label": "_Quit", "event": 99 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

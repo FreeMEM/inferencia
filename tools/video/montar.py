@@ -43,86 +43,156 @@ RECORTE = (56, 38, 696, 550)      # la pantalla nativa (no RTG) dentro de la cap
 PORTADA, RÓTULO, CIERRE_MIN, CIERRE_MAX = 9.0, 2.8, 14.0, 24.0
 VEL_SCROLL = 170
 
-# Por escena (el título del capítulo de la toma): su sitio y título en el vídeo, lo de la columna izquierda (hora de
-# la toma, texto) si la toma no lo trae, la ficha del encargo, tramos acelerados de más y subtítulos corregidos.
+# Por escena (el título del capítulo de la toma, en castellano en las dos lenguas): su título en el vídeo, lo de la
+# columna izquierda (hora de la toma, texto) si la toma no lo trae, la ficha del encargo (hora de la toma o None: la
+# del rasgo "Inferencia trabaja"; segundos; ruta en el Amiga y fichero por lengua), tramos acelerados de más y
+# subtítulos corregidos.
 ESCENAS = {
     "1 - Forja e Inferencia": {
-        "titulo": ("Forja e Inferencia", "Un hola mundo MUI, pedido en castellano"),
+        "titulo": {"es": ("Forja e Inferencia", "Un hola mundo MUI, pedido en castellano"),
+                   "en": ("Forja and Inferencia", "An MUI hello world, asked for in plain English")},
         "rasgos": [(1.0, "Forja e Inferencia"), (5.0, "El modelo, en casa"), (9.0, "El encargo"),
                    (19.6, "Inferencia trabaja"), (58.1, "Pide permiso"), (72.6, "Forja compila"),
                    (85.1, "Hola mundo MUI")],
-        "ficha": (19.45, 13.0, "DH0:Encargos/hola.txt", "encargos/hola.txt"),
+        "ficha": (None, 13.0, {"es": ("DH0:Encargos/hola.txt", "encargos/hola.txt"),
+                               "en": ("DH0:Tasks/hello.txt", "en/hello.txt")}),
     },
     "3 - Ventanas .dashui": {
-        "titulo": ("Ventanas .dashui", "El editor de ventanas de Forja, con MUI de verdad"),
-        "rapidos": [(21.0, 40.0, 3)],
+        "titulo": {"es": ("Ventanas .dashui", "El editor de ventanas de Forja, con MUI de verdad"),
+                   "en": (".dashui windows", "Forja's window editor, with real MUI")},
+        "rapidos_editar": 3,         # de poco después del rasgo "Cambios en vivo" al recuadro de la vista previa
     },
     "2 - LightWave": {
-        "titulo": ("LightWave", "Inferencia maneja otros programas por ARexx"),
+        "titulo": {"es": ("LightWave", "Inferencia maneja otros programas por ARexx"),
+                   "en": ("LightWave", "Inferencia drives other programs over ARexx")},
         "rasgos": [(1.3, "LightWave Modeler 5"), (27.3, "Volver al Workbench"), (31.7, "El encargo"),
                    (42.7, "Inferencia trabaja"), (74.6, "Pide permiso"), (94.8, "Guion ARexx y rx"),
                    (100.8, "AMIGA en 3D")],
-        "ficha": (42.5, 16.0, "DH0:Encargos/letras.txt", "encargos/letras.txt"),
+        "ficha": (None, 16.0, {"es": ("DH0:Encargos/letras.txt", "encargos/letras.txt"),
+                               "en": ("DH0:Tasks/letters.txt", "en/letters.txt")}),
         "subtitulos": {"LightWave Modeler, de 1995, se maneja con guiones ARexx.":
                        "LightWave Modeler 5, de 1996, se maneja con guiones ARexx."},
     },
 }
 ORDEN = ["1 - Forja e Inferencia", "3 - Ventanas .dashui", "2 - LightWave"]
 
-SCROLL = {
-    "Forja e Inferencia": "FORJA, EL IDE DE DASH, E INFERENCIA, UNA IA PARA EL AMIGA, HABLANDO POR AREXX...",
-    "El modelo, en casa": "EL MODELO ES QWEN3-CODER EN OLLAMA, EN UN PC DE CASA CON UNA RTX 3050: SIN NUBE Y SIN PAGAR...",
-    "Inferencia trabaja": "LEE, ESCRIBE, MANDA ÓRDENES AREXX... Y LO VES TODO EN DIRECTO EN SU VENTANA MUI...",
-    "Pide permiso": "NADA DE TOCAR TUS FICHEROS SIN PREGUNTAR: SÍ, NO O SIEMPRE...",
-    "Forja compila": "DASHC COMPILA EN EL PROPIO AMIGA: NADA DE COMPILAR EN EL PC...",
-    "Abrir un .dashui": "LAS VENTANAS SE DIBUJAN EN UN FICHERO .DASHUI, EL MISMO QUE EDITA LA EXTENSIÓN DE VS CODE...",
-    "Vista previa con MUI": "LA VISTA PREVIA NO ES UN DIBUJO: ES MUI 5 DE VERDAD...",
-    "Compilar y ejecutar": "IMPORT \"SALUDO.DASHUI\" Y LA VENTANA ES UN STRUCT CON SUS OBJETOS POR NOMBRE...",
-    "LightWave Modeler 5": "LIGHTWAVE 3D, EL DE LAS SERIES DE LOS NOVENTA, SE DEJA MANEJAR POR AREXX...",
-    "Guion ARexx y rx": "INFERENCIA LEE EL MANUAL DEL MODELER, ESCRIBE EL GUION Y LO PRUEBA CON RX...",
-    "AMIGA en 3D": "INFERENCIA, FORJA Y DASH: LIBRES, MIT, EN GITHUB.COM/FREEMEM...",
+TEXTOS = {
+    "es": {
+        "titulo": "Inferencia y Forja: una IA y un IDE para el Amiga",
+        "portada": ["Una IA que trabaja en el Amiga", "Con Forja, el IDE de Dash, y LightWave 3D",
+                    "AmigaOS 3.2, MUI 5, ARexx - escritos en Dash"],
+        "scroll_portada": "*** INFERENCIA Y FORJA *** UNA IA Y UN IDE PARA EL AMIGA, ESCRITOS EN DASH *** "
+                          "GRABADO EN DIRECTO EN UN AMIGA EMULADO CON RTG ***",
+        "scroll": {
+            "Forja e Inferencia": "FORJA, EL IDE DE DASH, E INFERENCIA, UNA IA PARA EL AMIGA, HABLANDO POR AREXX...",
+            "El modelo, en casa": "EL MODELO ES QWEN3-CODER EN OLLAMA, EN UN PC DE CASA CON UNA RTX 3050: SIN NUBE Y "
+                                  "SIN PAGAR...",
+            "Inferencia trabaja": "LEE, ESCRIBE, MANDA ÓRDENES AREXX... Y LO VES TODO EN DIRECTO EN SU VENTANA MUI...",
+            "Pide permiso": "NADA DE TOCAR TUS FICHEROS SIN PREGUNTAR: SÍ, NO O SIEMPRE...",
+            "Forja compila": "DASHC COMPILA EN EL PROPIO AMIGA: NADA DE COMPILAR EN EL PC...",
+            "Abrir un .dashui": "LAS VENTANAS SE DIBUJAN EN UN FICHERO .DASHUI, EL MISMO QUE EDITA LA EXTENSIÓN DE VS "
+                                "CODE...",
+            "Vista previa con MUI": "LA VISTA PREVIA NO ES UN DIBUJO: ES MUI 5 DE VERDAD...",
+            "Compilar y ejecutar": "IMPORT \"SALUDO.DASHUI\" Y LA VENTANA ES UN STRUCT CON SUS OBJETOS POR NOMBRE...",
+            "LightWave Modeler 5": "LIGHTWAVE 3D, EL DE LAS SERIES DE LOS NOVENTA, SE DEJA MANEJAR POR AREXX...",
+            "Guion ARexx y rx": "INFERENCIA LEE EL MANUAL DEL MODELER, ESCRIBE EL GUION Y LO PRUEBA CON RX...",
+            "AMIGA en 3D": "INFERENCIA, FORJA Y DASH: LIBRES, MIT, EN GITHUB.COM/FREEMEM...",
+        },
+        "saludos": "*** SALUDOS A *** CAPTAIN POR SPACE DEBRIS *** NEWTEK POR LIGHTWAVE *** STEFAN STUNTZ Y EL EQUIPO "
+                   "DE MUI *** LA GENTE DE COFFINOS *** AMIBERRY *** OLLAMA *** AMINET *** "
+                   "Y A TODOS LOS QUE MANTENÉIS VIVO EL AMIGA! ***",
+        "musica": {"suena": "SUENA", "tema": "Space Debris", "autores": ["Captain", "(Markus Kaarlonen)"],
+                   "grupo": "Un clásico del Amiga", "demo": ["Un mod de ProTracker", "de 4 canales"],
+                   "grabado": ["AmigaOS 3.2, Amiberry", "RTG 1024x768", "Solo se aceleran las esperas"]},
+        "encargo": "El encargo:",
+        "portada_capitulo": "Inferencia y Forja",
+        "creditos_capitulo": "Créditos",
+        "creditos": [
+            ("t", "INFERENCIA Y FORJA"),
+            ("s", "Una IA y un IDE para el Amiga, escritos en Dash"),
+            ("n", "github.com/FreeMEM/inferencia"),
+            ("n", "github.com/FreeMEM/forja"),
+            ("s", ""),
+            ("t", "CÓDIGO"),
+            ("n", "FreeMEM"),
+            ("s", ""),
+            ("t", "MÚSICA"),
+            ("n", "Space Debris - Captain (Markus Kaarlonen)"),
+            ("s", ""),
+            ("t", "EL MODELO"),
+            ("n", "qwen3-coder en Ollama, en un PC de casa"),
+            ("s", ""),
+            ("t", "HECHO CON"),
+            ("n", "Dash 2.0 - MUI 5 - ARexx"),
+            ("s", ""),
+            ("t", "GRABADO EN"),
+            ("n", "AmigaOS 3.2 - Amiberry - LightWave Modeler 5"),
+            ("s", ""),
+            ("t", "SALUDOS"),
+            ("n", "Captain - NewTek - el equipo de MUI"),
+            ("n", "La gente de CoffinOS - Amiberry - Ollama - Aminet"),
+            ("s", "y a todos los que mantenéis vivo el Amiga!"),
+        ],
+    },
+    "en": {
+        "titulo": "Inferencia and Forja: an AI and an IDE for the Amiga",
+        "portada": ["An AI that works on the Amiga", "With Forja, the Dash IDE, and LightWave 3D",
+                    "AmigaOS 3.2, MUI 5, ARexx - written in Dash"],
+        "scroll_portada": "*** INFERENCIA AND FORJA *** AN AI AND AN IDE FOR THE AMIGA, WRITTEN IN DASH *** "
+                          "RECORDED LIVE ON AN EMULATED AMIGA WITH RTG ***",
+        "scroll": {
+            "Forja and Inferencia": "FORJA, THE DASH IDE, AND INFERENCIA, AN AI FOR THE AMIGA, TALKING OVER AREXX...",
+            "A model at home": "THE MODEL IS QWEN3-CODER ON OLLAMA, ON A HOME PC WITH AN RTX 3050: NO CLOUD, NOTHING "
+                               "TO PAY...",
+            "Inferencia at work": "IT READS, WRITES, SENDS AREXX COMMANDS... AND YOU SEE IT ALL LIVE IN ITS MUI "
+                                  "WINDOW...",
+            "It asks first": "IT NEVER TOUCHES YOUR FILES WITHOUT ASKING: YES, NO OR ALWAYS...",
+            "Forja builds it": "DASHC COMPILES ON THE AMIGA ITSELF: NO CROSS-COMPILING ON A PC...",
+            "Opening a .dashui": "WINDOWS ARE DRAWN IN A .DASHUI FILE, THE SAME ONE THE VS CODE EXTENSION EDITS...",
+            "Real MUI preview": "THE PREVIEW IS NOT A DRAWING: IT IS REAL MUI 5...",
+            "Build and run": "IMPORT \"GREETING.DASHUI\" AND THE WINDOW IS A STRUCT WITH ITS OBJECTS BY NAME...",
+            "LightWave Modeler 5": "LIGHTWAVE 3D, THE ONE FROM THE NINETIES TV SHOWS, CAN BE DRIVEN OVER AREXX...",
+            "ARexx script and rx": "INFERENCIA READS THE MODELER MANUAL, WRITES THE SCRIPT AND TRIES IT WITH RX...",
+            "AMIGA in 3D": "INFERENCIA, FORJA AND DASH: FREE, MIT LICENSED, AT GITHUB.COM/FREEMEM...",
+        },
+        "saludos": "*** GREETINGS TO *** CAPTAIN FOR SPACE DEBRIS *** NEWTEK FOR LIGHTWAVE *** STEFAN STUNTZ AND THE "
+                   "MUI TEAM *** THE COFFINOS FOLKS *** AMIBERRY *** OLLAMA *** AMINET *** "
+                   "AND EVERYONE WHO KEEPS THE AMIGA ALIVE! ***",
+        "musica": {"suena": "NOW PLAYING", "tema": "Space Debris", "autores": ["Captain", "(Markus Kaarlonen)"],
+                   "grupo": "An Amiga classic", "demo": ["A 4-channel", "ProTracker module"],
+                   "grabado": ["AmigaOS 3.2, Amiberry", "RTG 1024x768", "Waits sped up, nothing else"]},
+        "encargo": "The task:",
+        "portada_capitulo": "Inferencia and Forja",
+        "creditos_capitulo": "Credits",
+        "creditos": [
+            ("t", "INFERENCIA AND FORJA"),
+            ("s", "An AI and an IDE for the Amiga, written in Dash"),
+            ("n", "github.com/FreeMEM/inferencia"),
+            ("n", "github.com/FreeMEM/forja"),
+            ("s", ""),
+            ("t", "CODE"),
+            ("n", "FreeMEM"),
+            ("s", ""),
+            ("t", "MUSIC"),
+            ("n", "Space Debris - Captain (Markus Kaarlonen)"),
+            ("s", ""),
+            ("t", "THE MODEL"),
+            ("n", "qwen3-coder on Ollama, on a home PC"),
+            ("s", ""),
+            ("t", "MADE WITH"),
+            ("n", "Dash 2.0 - MUI 5 - ARexx"),
+            ("s", ""),
+            ("t", "RECORDED ON"),
+            ("n", "AmigaOS 3.2 - Amiberry - LightWave Modeler 5"),
+            ("s", ""),
+            ("t", "GREETINGS"),
+            ("n", "Captain - NewTek - the MUI team"),
+            ("n", "The CoffinOS folks - Amiberry - Ollama - Aminet"),
+            ("s", "and everyone who keeps the Amiga alive!"),
+        ],
+    },
 }
-T = {
-    "titulo": "Inferencia y Forja: una IA y un IDE para el Amiga",
-    "portada": ["Una IA que trabaja en el Amiga", "Con Forja, el IDE de Dash, y LightWave 3D",
-                "AmigaOS 3.2, MUI 5, ARexx - escritos en Dash"],
-    "scroll_portada": "*** INFERENCIA Y FORJA *** UNA IA Y UN IDE PARA EL AMIGA, ESCRITOS EN DASH *** "
-                      "GRABADO EN DIRECTO EN UN AMIGA EMULADO CON RTG ***",
-    "saludos": "*** SALUDOS A *** CAPTAIN POR SPACE DEBRIS *** NEWTEK POR LIGHTWAVE *** STEFAN STUNTZ Y EL EQUIPO DE "
-               "MUI *** LA GENTE DE COFFINOS *** AMIBERRY *** OLLAMA *** AMINET *** "
-               "Y A TODOS LOS QUE MANTENÉIS VIVO EL AMIGA! ***",
-    "musica": {"suena": "SUENA", "tema": "Space Debris", "autores": ["Captain", "(Markus Kaarlonen)"],
-               "grupo": "Un clásico del Amiga", "demo": ["Un mod de ProTracker", "de 4 canales"],
-               "grabado": ["AmigaOS 3.2, Amiberry", "RTG 1024x768", "Solo se aceleran las esperas"]},
-    "portada_capitulo": "Inferencia y Forja",
-    "creditos_capitulo": "Créditos",
-    "creditos": [
-        ("t", "INFERENCIA Y FORJA"),
-        ("s", "Una IA y un IDE para el Amiga, escritos en Dash"),
-        ("n", "github.com/FreeMEM/inferencia"),
-        ("n", "github.com/FreeMEM/forja"),
-        ("s", ""),
-        ("t", "CÓDIGO"),
-        ("n", "FreeMEM"),
-        ("s", ""),
-        ("t", "MÚSICA"),
-        ("n", "Space Debris - Captain (Markus Kaarlonen)"),
-        ("s", ""),
-        ("t", "EL MODELO"),
-        ("n", "qwen3-coder en Ollama, en un PC de casa"),
-        ("s", ""),
-        ("t", "HECHO CON"),
-        ("n", "Dash 2.0 - MUI 5 - ARexx"),
-        ("s", ""),
-        ("t", "GRABADO EN"),
-        ("n", "AmigaOS 3.2 - Amiberry - LightWave Modeler 5"),
-        ("s", ""),
-        ("t", "SALUDOS"),
-        ("n", "Captain - NewTek - el equipo de MUI"),
-        ("n", "La gente de CoffinOS - Amiberry - Ollama - Aminet"),
-        ("s", "y a todos los que mantenéis vivo el Amiga!"),
-    ],
-}
+T = TEXTOS["es"]            # la lengua de las tomas: main() la cambia
 
 
 def fuente(tam):
@@ -298,7 +368,7 @@ def ficha(titulo, fichero):
     img = Image.new("RGBA", (1180, alto), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     d.rounded_rectangle([0, 0, 1179, alto - 1], 14, fill=(10, 10, 14, 240), outline=ACENTO + (255,), width=3)
-    d.text((40, 30), "El encargo:", font=fuente(26), fill=GRIS)
+    d.text((40, 30), T["encargo"], font=fuente(26), fill=GRIS)
     d.text((40, 66), titulo, font=ft, fill=ACENTO)
     d.rectangle([40, 116, 1140, 117], fill=(70, 66, 50))
     y = 140
@@ -518,8 +588,23 @@ def main():
         toma["subtitulos"] = [[a, b, cambios.get(s, s)] for (a, b, s) in toma["subtitulos"]]
         tomas.append(toma)
     tomas.sort(key=lambda tm: ORDEN.index(tm["clave"]))
-    fichas = [ficha(tm["escena"]["ficha"][2], tm["escena"]["ficha"][3]) if "ficha" in tm["escena"] else None
-              for tm in tomas]
+    global T
+    lengua = tomas[0].get("lengua", "es")
+    T = TEXTOS[lengua]
+    for tm in tomas:
+        esc_t = tm["escena"]
+        tm["titulo"] = esc_t["titulo"][lengua]
+        rasgos = tm.get("rasgos") or esc_t.get("rasgos", [])
+        if "ficha" in esc_t:
+            hora, dur, por_lengua = esc_t["ficha"]
+            if hora is None:
+                hora = next(t for (t, x) in rasgos if x in ("Inferencia trabaja", "Inferencia at work")) - 0.15
+            tm["ficha"] = (hora, dur) + por_lengua[lengua]
+        if "rapidos_editar" in esc_t:
+            a = rasgos[2][0] + 2.1
+            b = next(m[0] for m in tm["marcas"] if m[2] == "vista") - 0.8
+            tm["rapidos"] = tm["rapidos"] + [(a, b, esc_t["rapidos_editar"])]
+    fichas = [ficha(tm["ficha"][2], tm["ficha"][3]) if "ficha" in tm else None for tm in tomas]
 
     # El guion: portada; por toma, su rótulo y su trozo (esperas aceleradas, la ficha del encargo con la toma
     # parada); créditos
@@ -530,7 +615,7 @@ def main():
         plan.append(("rotulo", n, tv)); tv += RÓTULO
         t0, t1 = toma["capitulos"][0][0], toma["fin"]
         marcas_t, pasos = [], []
-        ficha_t = esc_t.get("ficha")
+        ficha_t = toma.get("ficha")
 
         def factor(t):
             for (a, b, f) in toma["rapidos"]:
@@ -556,8 +641,8 @@ def main():
         rasgos = toma.get("rasgos") or esc_t.get("rasgos", [])
         for (tr, texto) in rasgos:
             lista.append((a_video_t(tr), texto))
-            if texto in SCROLL:
-                eventos.append((a_video_t(tr), SCROLL[texto]))
+            if texto in T["scroll"]:
+                eventos.append((a_video_t(tr), T["scroll"][texto]))
         ss = toma["subtitulos"]
         for i, (s0, s1, texto) in enumerate(ss):
             a = a_video_t(s0)
@@ -574,7 +659,7 @@ def main():
     n_total = int(t_total * FPS)
     m = Montaje(n_total + FPS, lista, scroller, tomas, fichas)
     m.subs = subs
-    m.bases = {n: m.fondo(tm["escena"]["titulo"][0], f"{n + 1:02d} / {len(tomas):02d}") for n, tm in enumerate(tomas)}
+    m.bases = {n: m.fondo(tm["titulo"][0], f"{n + 1:02d} / {len(tomas):02d}") for n, tm in enumerate(tomas)}
     print(f"vídeo: {t_total:.1f} s (música {t_musica:.1f} s, créditos {cierre:.1f} s)", flush=True)
     t_completo = t_total
     if prueba:
@@ -598,7 +683,7 @@ def main():
                 return
             if paso[0] == "rotulo":
                 _, n, _ = paso
-                titulo, sub = tomas[n]["escena"]["titulo"]
+                titulo, sub = tomas[n]["titulo"]
                 datos = rotulo(titulo, sub, f"{n + 1:02d} / {len(tomas):02d}").tobytes()
                 for _ in range(int(RÓTULO * FPS)):
                     if k >= n_total:
@@ -625,7 +710,7 @@ def main():
     with open(salida + ".srt", "w") as f:
         for i, (a, b, texto) in enumerate(subs, 1):
             f.write(f"{i}\n{srt_tiempo(a)} --> {srt_tiempo(b)}\n{texto}\n\n")
-    capitulos = [(0.0, T["portada_capitulo"])] + [(p[2], tomas[p[1]]["escena"]["titulo"][0])
+    capitulos = [(0.0, T["portada_capitulo"])] + [(p[2], tomas[p[1]]["titulo"][0])
                                                   for p in plan if p[0] == "rotulo"]
     capitulos = [c for c in capitulos + [(t_completo - cierre, T["creditos_capitulo"])] if c[0] < t_total]
     with open(salida + ".capitulos.txt", "w") as f:

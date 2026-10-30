@@ -1,0 +1,14 @@
+LightWave Modeler is open on this Amiga. It is driven with ARexx scripts (manual: SYS:LightWave/Documentation/LightWave/ModelerARexx.TXT). It is plain ARexx: the script starts with call addlib("LWModelerARexx.port", 0) and then each function is called with call in front, for example call new(). Vectors go as ONE string with the three numbers separated by spaces: "1 0.5 0".
+
+Write to DH0:amiga.rexx a script that makes the word AMIGA in 3D:
+0. The first line, a comment: /* The word AMIGA */ (ARexx needs it: without it, rx says Program not found).
+   The second line: call addlib("LWModelerARexx.port", 0) (without it, the Modeler functions don't exist).
+1. call new() and call surface("Letters").
+2. f = fontload("Toaster:ToasterFonts/Olnova/Olnova-Bold") and call maketext("AMIGA", f).
+3. bb = boundingbox() and parse var bb n x0 x1 y0 y1 z0 z1. Center it: call move(-(x0 + x1) / 2 -(y0 + y1) / 2 0).
+4. Give it depth: call extrude("Z", 0.2).
+5. say boundingbox() and call save("DH0:amiga.lwo").
+
+Run it with the command SYS:Rexxc/rx DH0:amiga.rexx. If it fails, read the message, fix the script and run it again.
+
+Answer in English.

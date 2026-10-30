@@ -9,6 +9,10 @@ socket de Amiberry, piloto del ratón y `Rodaje`, que saca 25 capturas por segun
   LightWave y los encargos de `encargos/`. LightWave, RexxMast y las órdenes de C salen de Coffin R65 y van en
   `~/.cache/video-inferencia/kit` (no van al repo). Inferencia usa un servidor con el formato de OpenAI (Ollama),
   sin clave.
+- En inglés: `LENGUA=en` en `toma.sh` (y `preparar.sh`) pone los ficheros de `en/` (encargos, ejemplo, ventana
+  `greeting.dashui`) y los catálogos ingleses de Inferencia y Forja, y el guion escribe y subtitula en inglés.
+  `montar.py` saca la lengua de las tomas. El sistema prompt de Inferencia está en castellano: el encargo de LightWave
+  pide "Answer in English" porque sin eso contestó en castellano.
 - `arrancar.sh`: Amiberry sin ventana en la pantalla virtual `:78` (`Xvfb :78 -screen 0 1920x1080x24`).
 - `toma.sh DASH_DIR forja|lightwave|dashui CARPETA [MODELO]` (con `URL=...`): arranca desde cero y graba la escena con
   `guion.py`. El guion teclea el encargo con el agente (`agente.c`: el de Trasfondo con las teclas muertas, para
@@ -19,6 +23,8 @@ socket de Amiberry, piloto del ratón y `Rodaje`, que saca 25 capturas por segun
   enteros en una ficha con la toma parada; tramos acelerados (x4 mientras el modelo piensa) y las pantallas
   entrelazadas de LightWave. La música, Space Debris de Captain, en `~/.cache/video-inferencia/musica` (de
   modland.com, pasada a WAV con `openmpt123` y a 16 bits con ffmpeg; no va al repo).
+- `miniatura.py forja.png lightwave.png salida.jpg [es|en]`: la miniatura de YouTube (la que enseñan Telegram y
+  compañía al pegar el enlace).
 
 Lo aprendido: un guion ARexx sin comentario en la primera línea da "Program not found" (los modelos pequeños lo
 toman por que rx no existe); qwen3-coder 30B en Ollama hace las dos escenas, pero no siempre a la primera, y
