@@ -218,5 +218,5 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   nueva de Inferencia, para que Inferencia no tenga que pedírselo a Forja mientras Forja espera) y la arranca si
   no está. Inferencia lee, escribe y edita a través de Forja los ficheros que tiene abiertos (sin guardar, con
   deshacer). Pruebas en FS-UAE, "TODO BIEN": `tests/juntos.dash` (los dos programas a la vez) y
-  `forja/tests/rexx.dash`. Pedida a dashc la pieza 14: un RESULT vacío llega como el de la orden anterior (la
-  prueba lo rodea).
+  `forja/tests/rexx.dash`. Pieza 14 de dashc (b440e6b): un RESULT vacío llegaba como el de la orden anterior;
+  arreglado, y la prueba vuelve a exigir "".
