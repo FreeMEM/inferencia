@@ -104,8 +104,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 
 ### El resto
 
-- [ ] F7 Editor de `.dashui` (F7a hecha: árbol, propiedades, vista previa, guardar; falta F7b: añadir, quitar y
-  mover objetos, y los menús):
+- [x] F7 Editor de `.dashui` (F7a y F7b):
   - Árbol de objetos.
   - Vista previa real con `lib/dashui.dash`.
   - Propiedades.
@@ -229,3 +228,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   cambio; la anterior se destruye con `mui_window_dispose` (pieza 15). `tests/diseno.sh` en FS-UAE: "TODO BIEN";
   `teclas.sh` sigue bien. Rehacer la vista tarda más de 2 s con la CPU al máximo: por medir. El teclado vuelve a
   Forja buscándola por título (rodeo); pedida la pieza 16 (activar ventanas MUI).
+- 2026-10-30, F7b: en el árbol, "+" añade (en un grupo, un hijo; en otro objeto, uno detrás, eligiendo el tipo en
+  una lista; en la ventana, un menú; en un menú, una opción), Supr quita, Alt + arriba o abajo cambia de sitio; los
+  menús y sus opciones salen en el árbol con sus propiedades (key de una letra); el árbol se desplaza para que se vea
+  la fila elegida. `tests/diseno.sh` en FS-UAE: "TODO BIEN" dos de tres veces; la otra, Return se perdió, creo que
+  porque la vista previa rehecha se quedó el teclado (lo arregla la pieza 16). La sonda dice también el estado del
+  editor de ventanas (ENV:FORJA_DISENO).
