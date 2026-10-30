@@ -312,3 +312,8 @@ Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBL
   botones y la vista de la conversación). Probado con `tests/ventana.sh` en 3.1 (4 colores) y con `RTG=1` (nuevo:
   3.2 con 256 colores). El cuadro de escribir y los campos de texto siguen claros, como en Forja: sus colores son
   las prefs de MUI.
+- 2026-10-30: campos de texto en gris oscuro con la pieza 26 de Dash (`"field_colors"` en .dashui, ide-piezas
+  2e972f6), en Inferencia y Forja. El color del texto de los campos no se puede cambiar en MUI 5 (dashc lo
+  intentó), así que negro del todo no: gris donde el texto negro se lee. Con 4 colores MUI los pone azules. El
+  editor de ventanas de Forja deja editar `field_colors` y no lo aplica en la vista previa (cambiaría Forja).
+  Probado: ventana.sh en 3.1 y RTG, Forja ventana.sh RTG, diseno.sh y buscar.sh (TODO BIEN).
