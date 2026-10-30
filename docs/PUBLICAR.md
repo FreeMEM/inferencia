@@ -8,7 +8,8 @@ Inferencia y Forja funcionan en FS-UAE con todas sus pruebas. Publicarlas lo dec
    Emu68). Lo que más preocupa: en el emulador, con la CPU a la velocidad de un 68020, el saludo TLS de AmiSSL no
    acabó en un minuto (F0). Con un 68020 sin más, Inferencia puede no llegar a OpenRouter ni a Anthropic; con un
    modelo en casa (Ollama, por HTTP) no hay TLS.
-3. **El inglés**: los catálogos de los dos programas (tarea I11b y F10b del bucle). Ahora todo sale en castellano.
+3. **El inglés**: hecho con catálogos. Falta que alguien de habla inglesa los repase, y que los errores de red de
+   lib/red (en inglés de origen) tengan versión en castellano: hoy salen en inglés en los dos idiomas.
 4. **Probar con la API de verdad lo que cuesta dinero**: Anthropic directo y el coste que da OpenRouter con un
    modelo de pago. Anthropic aún no va en streaming.
 5. **Fallos de Dash pendientes**, rodeados en el código: un temporal pasado a una función se libera antes de

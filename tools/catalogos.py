@@ -23,11 +23,14 @@ import catalogo   # noqa: E402
 
 cd = raiz / "catalogos/Inferencia.cd"
 ct = raiz / "catalogos/english.ct"
+cd.parent.mkdir(exist_ok=True)
 if orden == "cd":
     sys.argv = ["catalogo.py", "cd", str(raiz / "src/main.dash"), "-o", str(cd)]
 elif orden == "ct":
     sys.argv = ["catalogo.py", "ct", str(cd), "--language", "english", "--name", "Inferencia.catalog", "--version", "1.0",
-                "--update", str(ct), "-o", str(ct)]
+                "-o", str(ct)]
+    if ct.exists():
+        sys.argv[-2:-2] = ["--update", str(ct)]
 else:
     sys.argv = ["catalogo.py", "catalog", str(ct), "-o", str(raiz / "build/Catalogs/english/Inferencia.catalog")]
 catalogo.main()

@@ -126,7 +126,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 - [x] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
 - [x] I11a y F10a Acabado: iconos, paquete `.lha`, README en inglés y la lista de lo que queda para la primera
   versión publicada (docs/PUBLICAR.md). Publicarla lo decide el usuario.
-- [ ] I11b y F10b Catálogos en inglés (I11b hecha; falta F10b, Forja): los textos de los programas con `tr()` y los de los `.dashui` con "tr",
+- [x] I11b y F10b Catálogos en inglés: los textos de los programas con `tr()` y los de los `.dashui` con "tr",
   `tools/catalogo.py` de Dash, y el catálogo en el paquete.
 
 ## Bitácora
@@ -297,3 +297,11 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   herramientas, el mensaje de sistema) sigue en castellano. catalogos/Inferencia.cd y english.ct (traducido);
   tools/catalogos.py (cd, ct, catalog) usa catalogo.py de Dash saltándose los import de lib/, que no encuentra
   (pieza 25 a dashc); el paquete lleva Catalogs/english. En FS-UAE (CATALOGOS=1 en ventana.sh) sale en inglés.
+- 2026-10-30, F10b: Forja en inglés: 108 textos (tr() en avisos, paneles, depurador, editor de ventanas; "tr" en
+  sus cinco ventanas), @catalog "Forja.catalog" 1 "español", hueco y hueco2 propios en tema.dash. Pieza 25 de dashc:
+  catalogo.py ya encuentra lib/ (quitado el rodeo); los errores de red de lib/red (400 a 442) entran en el catálogo
+  de Inferencia y se quedan en inglés, que es su idioma de origen. Captura en FS-UAE con 256 colores y el catálogo:
+  en inglés. teclas, ficheros y buscar siguen en "TODO BIEN" (sin catálogo). Los dos paquetes llevan Catalogs/english
+  (inferencia-0.1.lha, forja-0.1.lha).
+
+Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBLICAR.md.
