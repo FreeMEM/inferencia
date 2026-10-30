@@ -10,7 +10,11 @@
 # Puerto ARexx INFERENCIA.1: PREGUNTA "texto" la manda (sin esperar: RC 5 si está ocupada); ESTADO dice libre,
 # pidiendo, permiso u orden; RESPUESTA da la última respuesta cuando está libre (RC 5 si no, 10 si hubo un
 # error); CONTEXTO fichero [desde hasta] lo añade a la siguiente pregunta, y ADJUNTAR título (con el texto en las
-# líneas siguientes) también; NUEVA, MOSTRAR y OCULTAR.
+# líneas siguientes) también; NUEVA, MOSTRAR y OCULTAR; GUARDAR fichero y CARGAR fichero (la conversación, en JSON);
+# COSTE ("tokens_de_entrada tokens_de_salida millonésimas_de_dólar"); MENSAJES (cuántos lleva).
+#
+# La conversación se reenvía entera en cada petición. Si pasa de ENV:Inferencia/tope caracteres (60000), se quitan
+# los resultados viejos de las herramientas y, si aún pasa, se pide al modelo un resumen de lo anterior.
 #
 # Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
 # segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
@@ -35,6 +39,9 @@ const EV_BARRA = 3
 const EV_LIENZO = 4
 const EV_TIC = 5
 const EV_NUEVA = 20
+const EV_GUARDAR = 21
+const EV_ABRIR = 22
+const TOPE_CONVERSACION = 60000   # caracteres; ENV:Inferencia/tope lo cambia
 const EV_SALIR = 99
 const TIC_MS = 50            # mientras pasa algo
 const TIC_QUIETO_MS = 300    # si no: para seguir a la vista cuando la ventana cambia de tamaño
@@ -67,6 +74,8 @@ var prueba_permiso: String = ""
 var tics_permiso: Int = -1
 var tokens_entrada: Int = 0
 var tokens_salida: Int = 0
+var coste: Int = 0                  # millonésimas de dólar
+var resumiendo: Conversacion = nil  # la petición del resumen, mientras se hace
 var barra_valor: Int = -1
 var tics_cierre: Int = -1
 var sonda: Bool = false
@@ -125,7 +134,14 @@ func poner_estado(e: Int)
     elif e == ORDEN
         mui_set_text(v.estado, "Orden en marcha")
     else
-        mui_set_text(v.estado, "#{tokens_entrada + tokens_salida} tokens")
+        t = "#{tokens_entrada + tokens_salida} tokens"
+        if coste > 0
+            # en dólares con cuatro decimales; corto, para que quepa al lado del modelo
+            c = coste / 100
+            cent = "" + (c % 10000 + 10000)
+            t = "#{tokens_entrada + tokens_salida} tk · #{c / 10000}," + cent[1:] + " $"
+        end
+        mui_set_text(v.estado, t)
         if prueba
             tics_cierre = CIERRE_PRUEBA_TICS
         end
@@ -143,7 +159,9 @@ func enviar(texto: String)
     ultima_respuesta = ""
     ultimo_error = ""
     vueltas = 0
-    pedir()
+    if not resumir_si_hace_falta()
+        pedir()
+    end
 end
 
 func pedir()
@@ -152,8 +170,54 @@ func pedir()
     refrescar()
 end
 
+func tope() -> Int
+    t = env_get("Inferencia/tope")
+    if t == ""
+        return TOPE_CONVERSACION
+    end
+    return Int(t)
+end
+
+# Si la conversación pasa del tope: primero se quitan los resultados viejos de las herramientas; si aún pasa, se
+# pide al modelo un resumen de todo lo anterior a la pregunta nueva (true: la petición del resumen ya va)
+func resumir_si_hace_falta() -> Bool
+    if conv_tamano(conv) <= tope()
+        return false
+    end
+    conv_recortar(conv, 6)
+    if conv_tamano(conv) <= tope() or conv_longitud(conv) < 4
+        return false
+    end
+    vista_anadir(QUIEN_AVISO, "La conversación es larga: pido un resumen de lo anterior.")
+    resumiendo = conv_para_resumen(conv)
+    carga = conv_empezar(resumiendo, cfg)
+    poner_estado(PIDIENDO)
+    refrescar()
+    return true
+end
+
+func al_resumir()
+    t = conv_acabar(resumiendo, carga)
+    carga = nil
+    resumiendo = nil
+    tokens_entrada = tokens_entrada + t.entrada
+    tokens_salida = tokens_salida + t.salida
+    coste = coste + t.coste
+    if t.error != "" or t.texto == ""
+        vista_anadir(QUIEN_AVISO, "No se pudo resumir (" + t.error + "); sigue entera.")
+    else
+        conv_resumir(conv, t.texto)
+        vista_anadir(QUIEN_AVISO, "Resumida. Lo de antes va como resumen.")
+    end
+    pedir()
+end
+
 # Ha llegado la respuesta del modelo
 func al_llegar()
+    if resumiendo != nil
+        al_resumir()
+        return
+    end
     t = conv_acabar(conv, carga)
     carga = nil
     if t.error != ""
@@ -165,6 +229,7 @@ func al_llegar()
     end
     tokens_entrada = tokens_entrada + t.entrada
     tokens_salida = tokens_salida + t.salida
+    coste = coste + t.coste
     if t.texto != ""
         vista_anadir(QUIEN_MODELO, t.texto)
     end
@@ -306,6 +371,7 @@ func parar()
     if estado == PIDIENDO and carga != nil
         http_cancelar(carga)
         carga = nil
+        resumiendo = nil
     elif estado == ORDEN
         run_break(orden_en_marcha)
         resultado(orden_acabar(orden_en_marcha) + "\n[parada por el usuario]")
@@ -359,8 +425,73 @@ func nueva_conversacion()
     contexto = ""
     tokens_entrada = 0
     tokens_salida = 0
+    coste = 0
     poner_estado(LIBRE)
     refrescar()
+end
+
+# --- Guardar y abrir la conversación ---
+
+func guardar_conversacion(fichero: String) -> Bool
+    if file_write_text(fichero, conv_guardar(conv, cfg.modelo))
+        vista_anadir(QUIEN_AVISO, "Guardada en " + fichero + ".")
+        refrescar()
+        return true
+    end
+    vista_anadir(QUIEN_AVISO, "No se pudo guardar en " + fichero + ".")
+    refrescar()
+    return false
+end
+
+func abrir_conversacion(fichero: String) -> Bool
+    texto = file_read_text(fichero)
+    var c: Conversacion = nil
+    if texto != nil
+        c = conv_cargar(texto, conv)
+    end
+    if c == nil
+        vista_anadir(QUIEN_AVISO, fichero + " no es una conversación de Inferencia.")
+        refrescar()
+        return false
+    end
+    parar()
+    conv = c
+    vista_limpiar()
+    # la conversación se vuelve a ver: lo del usuario, lo del modelo y qué herramientas usó
+    n = json_length(conv.mensajes)
+    i = 1
+    while i < n
+        m = json_at(conv.mensajes, i)
+        rol = json_get_str(m, "role")
+        contenido = utf8_to_latin1(json_get_str(m, "content"))
+        if rol == "user"
+            if str_starts(contenido, "Resumen de la conversación")
+                vista_anadir(QUIEN_AVISO, "(resumen de lo anterior)")
+            else
+                vista_anadir(QUIEN_USUARIO, contenido)
+            end
+        elif rol == "assistant"
+            if contenido != "" and contenido != "De acuerdo."
+                vista_anadir(QUIEN_MODELO, contenido)
+            end
+            llamadas = json_get(m, "tool_calls")
+            if llamadas != nil
+                k = 0
+                while k < json_length(llamadas)
+                    vista_anadir(QUIEN_HERRAMIENTA, json_path_str(json_at(llamadas, k), "function.name"))
+                    k = k + 1
+                end
+            end
+        end
+        i = i + 1
+    end
+    vista_anadir(QUIEN_AVISO, "Abierta " + fichero + ".")
+    tokens_entrada = 0
+    tokens_salida = 0
+    coste = 0
+    poner_estado(LIBRE)
+    refrescar()
+    return true
 end
 
 # --- El puerto ARexx INFERENCIA.1 ---
@@ -477,6 +608,25 @@ func orden_rexx(linea: String) -> String
     elif orden == "MOSTRAR"
         mui_window_open(v.window)
         return ""
+    elif orden == "GUARDAR" or orden == "CARGAR"
+        if a == "" or estado != LIBRE
+            mui_rexx_fail(10)
+            return ""
+        end
+        bien = false
+        if orden == "GUARDAR"
+            bien = guardar_conversacion(a)
+        else
+            bien = abrir_conversacion(a)
+        end
+        if not bien
+            mui_rexx_fail(10)
+        end
+        return ""
+    elif orden == "COSTE"
+        return "#{tokens_entrada} #{tokens_salida} #{coste}"
+    elif orden == "MENSAJES"
+        return "#{conv_longitud(conv)}"
     elif orden == "OCULTAR"
         mui_window_close(v.window)
         return ""
@@ -552,6 +702,14 @@ Main
                 end
             elif ev == EV_NUEVA
                 nueva_conversacion()
+            elif ev == EV_GUARDAR
+                if file_save_dialog("Guardar la conversación", "#?.json")
+                    guardar_conversacion(file_fullpath())
+                end
+            elif ev == EV_ABRIR
+                if estado == LIBRE and file_open_dialog("Abrir una conversación", "#?.json")
+                    abrir_conversacion(file_fullpath())
+                end
             end
             ajustar_barra()
             if sonda

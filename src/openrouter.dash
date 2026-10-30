@@ -39,6 +39,7 @@ struct Turno
     entrada: Int          # tokens de entrada y de salida de este turno
     salida: Int
     error: String         # "" si fue bien
+    coste: Int            # lo que costó, en millonésimas de dólar (usage.cost de OpenRouter; 0 si no lo dice)
 end
 
 func conv_nueva(sistema: String) -> Conversacion
@@ -96,6 +97,10 @@ func _conv_cuerpo(c: Conversacion, modelo: String) -> String
     p = json_object()
     json_set_str(p, "model", modelo)
     json_set(p, "messages", c.mensajes)
+    # que OpenRouter diga lo que cuesta cada petición (usage.cost)
+    u = json_object()
+    json_set_bool(u, "include", true)
+    json_set(p, "usage", u)
     if json_length(c.herramientas) > 0
         json_set(p, "tools", c.herramientas)
     end
@@ -112,7 +117,7 @@ end
 
 func _turno_error(e: String) -> Turno
     var ls: [Llamada] = []
-    return Turno("", ls, "", "", 0, 0, e)
+    return Turno("", ls, "", "", 0, 0, e, 0)
 end
 
 # Manda la conversación sin esperar: http_avanzar(carga) hasta que dé true, y luego conv_acabar
@@ -167,8 +172,133 @@ func _conv_leer(c: Conversacion, r: Respuesta) -> Turno
         end
         ls.push(Llamada(json_get_str(tc, "id"), json_path_str(tc, "function.name"), a, crudo))
     end
-    t = Turno(utf8_to_latin1(json_get_str(msj, "content")), ls, json_path_str(j, "choices.0.finish_reason"), json_get_str(j, "model"), json_path_int(j, "usage.prompt_tokens"), json_path_int(j, "usage.completion_tokens"), "")
+    t = Turno(utf8_to_latin1(json_get_str(msj, "content")), ls, json_path_str(j, "choices.0.finish_reason"), json_get_str(j, "model"), json_path_int(j, "usage.prompt_tokens"), json_path_int(j, "usage.completion_tokens"), "", _millonesimas(json_path(j, "usage.cost")))
     return t
+end
+
+# Un número de dólares ("0.00123", 1.5e-5) en millonésimas, sin pasar por Float
+func _millonesimas(n: Json) -> Int
+    if n == nil or n.kind != JSON_NUMBER
+        return 0
+    end
+    t = str_lower(n.text)
+    exp = 0
+    e = str_find(t, "e")
+    if e >= 0
+        exp = Int(t[e + 1:])
+        t = t[0:e]
+    end
+    # las cifras sin el punto, y dónde estaba
+    p = str_find(t, ".")
+    decimales = 0
+    if p >= 0
+        decimales = t.length - p - 1
+        t = t[0:p] + t[p + 1:]
+    end
+    v = Int(t)
+    # v * 10^(6 + exp - decimales)
+    k = 6 + exp - decimales
+    while k > 0
+        v = v * 10
+        k = k - 1
+    end
+    while k < 0
+        v = v / 10
+        k = k + 1
+    end
+    return v
+end
+
+# --- Memoria: lo que ocupa, recortar, resumir, guardar y cargar ---
+
+# Lo que ocupa la conversación como se manda (caracteres)
+func conv_tamano(c: Conversacion) -> Int
+    return json_write(c.mensajes).length
+end
+
+# Quita el contenido de los resultados de herramientas viejos (todos menos los de los últimos "dejar" mensajes)
+func conv_recortar(c: Conversacion, dejar: Int)
+    n = json_length(c.mensajes)
+    i = 1
+    while i < n - dejar
+        m = json_at(c.mensajes, i)
+        if json_get_str(m, "role") == "tool" and json_get_str(m, "content").length > 200
+            json_set_str(m, "content", "[resultado quitado para ahorrar memoria]")
+        end
+        i = i + 1
+    end
+end
+
+# Una conversación aparte que pide al modelo un resumen de todo menos el último mensaje
+func conv_para_resumen(c: Conversacion) -> Conversacion
+    r = conv_nueva("Resume la conversación que te dan en pocos párrafos, en el idioma del usuario: lo que se pidió, lo que se hizo (ficheros leídos o cambiados, órdenes) y lo que quedó pendiente. Solo el resumen.")
+    t = ""
+    n = json_length(c.mensajes)
+    i = 1
+    while i < n - 1
+        m = json_at(c.mensajes, i)
+        rol = json_get_str(m, "role")
+        contenido = json_get_str(m, "content")
+        if rol == "tool" and contenido.length > 300
+            contenido = contenido[0:300]
+        end
+        llamadas = json_get(m, "tool_calls")
+        if llamadas != nil
+            k = 0
+            while k < json_length(llamadas)
+                args = json_path_str(json_at(llamadas, k), "function.arguments")
+                if args.length > 200
+                    args = args[0:200]
+                end
+                contenido = contenido + " [pide " + json_path_str(json_at(llamadas, k), "function.name") + " " + args + "]"
+                k = k + 1
+            end
+        end
+        t = t + rol + ": " + contenido + "\n\n"
+        i = i + 1
+    end
+    # (el texto ya va en UTF-8: directo a la API, sin conv_usuario)
+    m = json_object()
+    json_set_str(m, "role", "user")
+    json_set_str(m, "content", t)
+    json_push(r.mensajes, m)
+    return r
+end
+
+# Cambia todo lo de antes del último mensaje por el resumen (en Latin-1)
+func conv_resumir(c: Conversacion, resumen: String)
+    n = json_length(c.mensajes)
+    ultimo = json_at(c.mensajes, n - 1)
+    nuevos = json_array()
+    json_push(nuevos, json_at(c.mensajes, 0))
+    m = json_object()
+    json_set_str(m, "role", "user")
+    json_set_str(m, "content", latin1_to_utf8("Resumen de la conversación hasta aquí:\n" + resumen))
+    json_push(nuevos, m)
+    a = json_object()
+    json_set_str(a, "role", "assistant")
+    json_set_str(a, "content", "De acuerdo.")
+    json_push(nuevos, a)
+    json_push(nuevos, ultimo)
+    c.mensajes = nuevos
+end
+
+# La conversación como fichero JSON (UTF-8)
+func conv_guardar(c: Conversacion, modelo: String) -> String
+    d = json_object()
+    json_set_int(d, "inferencia", 1)
+    json_set_str(d, "modelo", latin1_to_utf8(modelo))
+    json_set(d, "mensajes", c.mensajes)
+    return json_pretty(d) + "\n"
+end
+
+# Una conversación guardada (nil si el fichero no lo es); las herramientas, las de c
+func conv_cargar(texto: String, c: Conversacion) -> Conversacion
+    d = json_parse(texto)
+    if d == nil or json_get_int(d, "inferencia") != 1 or json_get(d, "mensajes") == nil
+        return nil
+    end
+    return Conversacion(json_get(d, "mensajes"), c.herramientas)
 end
 
 # Un argumento de texto de una llamada, en Latin-1 ("" si no está)

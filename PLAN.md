@@ -106,8 +106,11 @@ aplicar cambios que se pueden deshacer y compilar.
 - Los planes de suscripción (Claude Pro/Max) no se pueden usar fuera de Claude Code y claude.ai.
 
 Detalles:
-- El historial solo crece y se reenvía entero. Lleva topes por herramienta y, cuando el proveedor lo
-  permita, caché de prompt.
+- El historial se reenvía entero. Lleva topes por herramienta; si la conversación pasa de
+  `ENV:Inferencia/tope` caracteres (60000), se quitan los resultados viejos de las herramientas y, si aún pasa,
+  el modelo resume lo anterior. Caché de prompt, cuando el proveedor lo permita.
+- El coste de cada petición (`usage.cost` de OpenRouter) se suma y se ve junto a los tokens.
+- La conversación se guarda y se abre como JSON (menú Proyecto, o GUARDAR y CARGAR por ARexx).
 - Antes de usar la respuesta se mira por qué paró (`finish_reason`). Si una herramienta falla, se le devuelve
   el error.
 

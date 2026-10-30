@@ -2,6 +2,7 @@
 """Un OpenRouter falso para probar Inferencia sin gastar: contesta a POST /api/v1/chat/completions en el formato
 de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 
+- Si el mensaje de sistema empieza por "Resume", contesta con un resumen fijo.
 - Sin herramientas en la petición: repite la pregunta. Si la pregunta empieza por "MARKDOWN", contesta con un
   texto de ejemplo en Markdown (para probar cómo se ve).
 - Con herramientas, si el último mensaje es del usuario y dice "LLAMA nombre {json}", pide esa herramienta con
@@ -54,6 +55,14 @@ class Falso(BaseHTTPRequestHandler):
         except (ValueError, KeyError, IndexError) as e:
             self._contestar(400, {"error": {"message": f"petición mal formada: {e}", "code": 400}})
             return
+        # la petición de un resumen (Inferencia, cuando la conversación crece)
+        if peticion["messages"][0]["role"] == "system" and peticion["messages"][0]["content"].startswith("Resume"):
+            self._contestar(200, {
+                "id": "gen-falso", "model": peticion.get("model", "") + " (falso)",
+                "choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": "RESUMEN DE PRUEBA: se habló de hola."}}],
+                "usage": self._uso(peticion)})
+            return
         guion = self._guion(peticion["messages"])
         if guion:
             self._contestar_guion(peticion, guion)
@@ -79,8 +88,15 @@ class Falso(BaseHTTPRequestHandler):
             "id": "gen-falso",
             "model": peticion.get("model", "") + " (falso)",
             "choices": [{"index": 0, "finish_reason": fin, "message": mensaje}],
-            "usage": {"prompt_tokens": len(peticion["messages"]) * 10, "completion_tokens": 5, "total_tokens": 0},
+            "usage": self._uso(peticion),
         })
+
+    def _uso(self, peticion):
+        """usage como el de OpenRouter: 10 tokens por mensaje; con usage.include, también cost (0,0001 $ por mensaje)"""
+        u = {"prompt_tokens": len(peticion["messages"]) * 10, "completion_tokens": 5, "total_tokens": 0}
+        if (peticion.get("usage") or {}).get("include"):
+            u["cost"] = len(peticion["messages"]) * 0.0001
+        return u
 
     def _guion(self, mensajes):
         """El guion de la última pregunta y el turno: (turnos, número), o None"""
@@ -112,7 +128,7 @@ class Falso(BaseHTTPRequestHandler):
         self._contestar(200, {
             "id": "gen-falso", "model": peticion.get("model", "") + " (falso)",
             "choices": [{"index": 0, "finish_reason": fin, "message": mensaje}],
-            "usage": {"prompt_tokens": len(mensajes) * 10, "completion_tokens": 5, "total_tokens": 0},
+            "usage": self._uso(peticion),
         })
 
     def _contestar(self, estado, datos):

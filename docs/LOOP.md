@@ -116,7 +116,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Seguir, paso, entrar y salir.
   - Variables, pila y la línea actual resaltada.
 - [x] I7 Herramientas `sistema`, `entorno` y `portapapeles`. Lista de órdenes y puertos que no piden permiso.
-- [ ] I8 Memoria y coste:
+- [x] I8 Memoria y coste:
   - Tokens y gasto (`usage`).
   - Topes por herramienta.
   - Guardar y cargar la conversación.
@@ -252,3 +252,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   portapapeles; escribir, fuera de la lista, pregunta). Un string liberado dos veces al reasignar la variable de
   un for colgaba el Amiga entero: pieza 18 a dashc, rodeado. dashc entregó la pieza 17 (json_parse en C, 2,2 veces
   más rápido).
+- 2026-10-30, I8: el coste de cada petición (`usage: {include: true}` y `usage.cost`, en millonésimas de dólar sin
+  Float) y los tokens, en el estado ("25 tk · 0,0002 $"); guardar y abrir la conversación en JSON (menú y ARexx
+  GUARDAR, CARGAR; también COSTE y MENSAJES); pasado `ENV:Inferencia/tope` (60000 caracteres) se quitan los
+  resultados viejos de las herramientas y, si no basta, el modelo resume lo anterior a la pregunta nueva.
+  `tests/memoria.dash` en FS-UAE: "TODO BIEN". No probado con el coste real de OpenRouter (los modelos :free no
+  cuestan). `c = nil` sin tipo perdía la conversación cargada: pieza 19 a dashc (que avise al compilar).

@@ -1,0 +1,73 @@
+# Memoria y coste de Inferencia, por ARexx: COSTE (tokens y dólares de usage.cost), GUARDAR y CARGAR la
+# conversación, y el resumen cuando pasa del tope (ENV:Inferencia/tope). Lo arranca tests/usuario.sh.
+
+const PUERTO = "INFERENCIA.1"
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func rexx(orden: String) -> String
+    return rexx_send(PUERTO, orden)
+end
+
+func respuesta() -> String
+    n = 0
+    time_delay(10)
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    return rexx("RESPUESTA")
+end
+
+Main
+    n = 0
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    rexx("PREGUNTA hola")
+    r = respuesta()
+    ver("coste de la primera pregunta (2 mensajes)", rexx("COSTE") == "20 5 200", rexx("COSTE"))
+    rexx("GUARDAR RAM:conv.json")
+    t = file_read_text("RAM:conv.json")
+    ver("GUARDAR", rexx_rc() == 0 and t != nil and str_contains(t, "\"inferencia\": 1") and str_contains(t, "\"content\": \"hola\""), t)
+    rexx("NUEVA")
+    ver("NUEVA deja solo el de sistema", rexx("MENSAJES") == "1", rexx("MENSAJES"))
+    rexx("CARGAR RAM:conv.json")
+    ver("CARGAR", rexx_rc() == 0 and rexx("MENSAJES") == "3", rexx("MENSAJES"))
+    rexx("PREGUNTA otra")
+    r = respuesta()
+    ver("la pregunta lleva lo cargado (4 mensajes)", rexx("COSTE") == "40 5 400", rexx("COSTE"))
+    rexx("CARGAR RAM:noexiste.json")
+    ver("CARGAR algo que no es da RC 10", rexx_rc() == 10, "rc #{rexx_rc()}")
+    # pasado el tope: un resumen de lo de antes y la pregunta nueva
+    env_set("Inferencia/tope", "300", false)
+    rexx("PREGUNTA Una pregunta bastante larga para que la conversación pase del tope de trescientos caracteres que acabo de poner en ENV:Inferencia/tope, y así Inferencia tenga que pedir un resumen antes de mandarla.")
+    r = respuesta()
+    ver("después del resumen, la respuesta", str_contains(r, "Una pregunta bastante larga"), r)
+    ver("quedan sistema, resumen, acuse, pregunta y respuesta", rexx("MENSAJES") == "5", rexx("MENSAJES"))
+    rexx("GUARDAR RAM:conv2.json")
+    t = file_read_text("RAM:conv2.json")
+    ver("el resumen está en la conversación", t != nil and str_contains(t, "RESUMEN DE PRUEBA"), t)
+    env_set("Inferencia/tope", "", false)
+    time_delay(150)
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    rexx("QUIT")
+end

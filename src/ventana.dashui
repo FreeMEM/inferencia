@@ -11,6 +11,8 @@
           "title": "Proyecto",
           "items": [
             { "label": "Conversación nueva", "key": "N", "event": 20 },
+            { "label": "Abrir conversación...", "key": "O", "event": 22 },
+            { "label": "Guardar conversación...", "key": "S", "event": 21 },
             { "separator": true },
             { "label": "Salir", "key": "Q", "event": 99 }
           ]
@@ -23,8 +25,8 @@
             "type": "hgroup",
             "children": [
               { "type": "label", "text": "Modelo:" },
-              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 250 },
-              { "type": "text", "name": "estado", "text": "", "weight": 250 }
+              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 180 },
+              { "type": "text", "name": "estado", "text": "", "weight": 320 }
             ]
           },
           {
