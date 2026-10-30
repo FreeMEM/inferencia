@@ -81,7 +81,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Texto por líneas, cursor y teclado (con la tabla de teclas).
   - Selección con ratón y teclado, desplazamiento, deshacer y rehacer.
   - Portapapeles.
-- [ ] F3 Colores de la sintaxis de Dash y números de línea. Rápido en un 68020.
+- [x] F3 Colores de la sintaxis de Dash y números de línea. Rápido en un 68020.
 - [ ] F4 Ficheros:
   - Pestañas.
   - Abrir y guardar con petición de fichero.
@@ -186,3 +186,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 - 2026-10-30, F1b: "background" en la ventana y "background" y "color" en los botones (pieza 11 de dashc).
   Captura en FS-UAE: todo negro con texto claro, también con los 4 colores del Workbench; la barra de
   desplazamiento sigue gris (no es de los objetos que admite).
+- 2026-10-30, F3: `src/sintaxis.dash` parte cada línea en trozos (palabra clave, tipo, texto, número,
+  comentario, llamada, constante) con `str_code` y un diccionario de palabras clave; el editor dibuja cada trozo
+  con su color. Al escribir dentro de una línea solo se redibuja esa línea (`mui_canvas_update_area`). Medido en
+  FS-UAE con la CPU a la velocidad de un A1200: un dibujo entero de unas 20 líneas, 38 ms (con la CPU al máximo,
+  45: lo marca el blitter). `tests/teclas.sh` sigue en "TODO BIEN". Captura en 256 colores con `RTG=1`
+  (AmigaOS 3.2, `sys32rtg8`): los colores bien. Con 4 colores casi todo sale blanco.
