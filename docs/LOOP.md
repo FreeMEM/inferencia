@@ -123,7 +123,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Resumir cuando crece.
 - [x] I9 Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
 - [x] I10 Más proveedores (Anthropic Messages, Ollama) y una ventana de preferencias.
-- [ ] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
+- [x] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
 - [ ] I11 y F10 Acabado:
   - Catálogos en inglés e iconos.
   - Paquete `.lha` y README en inglés.
@@ -278,3 +278,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   errores y 0 vivos. Por el camino: env_set dejaba el final del valor viejo si otro lo leía (pieza 22, arreglada) y
   un temporal pasado a una función se liberaba antes de tiempo (pieza 23, rodeado con una variable). Quitado el
   rodeo de la pieza 18.
+- 2026-10-30, F9: ventana de buscar y cambiar (Amiga-F: siguiente, anterior, cambiar, todo; con o sin mayúsculas,
+  dando la vuelta al texto; cambiar todo en un paso de deshacer), ir a la línea (Amiga-L), preferencias (dashc,
+  Inferencia y abrir al empezar lo de la última vez) y la sesión (ENVARC:Forja/sesion: cajón y ficheros abiertos,
+  guardada al salir). ARexx BUSCAR, CAMBIARTODO e IRA. Las ventanas nuevas no empiezan por "Forja" (window_find
+  busca por el principio del título). Redibujar dentro de una orden ARexx daba al cliente el RESULT anterior: se
+  redibuja después, con el temporizador; pieza 24 a dashc. `tests/buscar.sh` y `tests/rexx.sh` en FS-UAE: "TODO
+  BIEN". La sesión al empezar no tiene prueba automática.
