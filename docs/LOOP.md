@@ -124,10 +124,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 - [x] I9 Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
 - [x] I10 Más proveedores (Anthropic Messages, Ollama) y una ventana de preferencias.
 - [x] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
-- [ ] I11 y F10 Acabado:
-  - Catálogos en inglés e iconos.
-  - Paquete `.lha` y README en inglés.
-  - Lista de lo que queda para la primera versión publicada. Publicarla lo decide el usuario.
+- [x] I11a y F10a Acabado: iconos, paquete `.lha`, README en inglés y la lista de lo que queda para la primera
+  versión publicada (docs/PUBLICAR.md). Publicarla lo decide el usuario.
+- [ ] I11b y F10b Catálogos en inglés: los textos de los programas con `tr()` y los de los `.dashui` con "tr",
+  `tools/catalogo.py` de Dash, y el catálogo en el paquete.
 
 ## Bitácora
 
@@ -285,3 +285,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   busca por el principio del título). Redibujar dentro de una orden ARexx daba al cliente el RESULT anterior: se
   redibuja después, con el temporizador; pieza 24 a dashc. `tests/buscar.sh` y `tests/rexx.sh` en FS-UAE: "TODO
   BIEN". La sesión al empezar no tiene prueba automática.
+- 2026-10-30, I11a y F10a: iconos de 4 colores (un bocadillo y un yunque, con tools/iconos_wb.py de Tachyon),
+  `tools/paquete.py` en cada repo (compila, arma el cajón con los iconos, LEEME y README en Latin-1, LICENSE, y el
+  .lha con el lha de 68k): inferencia-0.1.lha, 145 KB; forja-0.1.lha, 135 KB. README en castellano y en inglés.
+  docs/PUBLICAR.md: Dash 2.0, probar en un Amiga de verdad (TLS en un 68020), el inglés, la API de pago, las
+  piezas 23 y 24, Aminet. Los iconos no se han visto en un Workbench emulado (solo dibujados en el PC). dashc no
+  reproduce la pieza 24; sospecha: env_set de la sonda dentro de la orden ARexx tarda y el cliente se cansa.
