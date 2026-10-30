@@ -1,0 +1,5 @@
+[
+  {"llamadas": [["entorno", {"accion": "poner", "nombre": "PRUEBA_INF", "valor": "hola ñ"}]]},
+  {"llamadas": [["entorno", {"accion": "leer", "nombre": "PRUEBA_INF"}]]},
+  {"texto": "Entorno: {resultado}"}
+]

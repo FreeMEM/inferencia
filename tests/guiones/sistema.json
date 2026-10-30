@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["sistema", {"que": "resumen"}]]},
+  {"texto": "Sistema: {resultado}"}
+]

@@ -78,8 +78,9 @@ Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon:
 | `entorno` | Lee y cambia variables de `ENV:` | Leer no; cambiar sí |
 | `portapapeles` | Lee y escribe el portapapeles | Leer no; escribir sí |
 
-Hay una lista de órdenes y puertos que no piden permiso, configurable, como en Claude Code. "Siempre" añade a
-esa lista la orden que se acaba de aceptar.
+Hay una lista de órdenes y puertos que no piden permiso, como en Claude Code: `ENV:Inferencia/sin_permiso`,
+separada por comas ("orden list,arexx FORJA.1,entorno,portapapeles"). "Siempre" añade a esa lista lo que se acaba
+de aceptar y la guarda también en `ENVARC:`.
 
 ## ARexx
 

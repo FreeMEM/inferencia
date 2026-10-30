@@ -1,7 +1,9 @@
-# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar, orden, puertos y arexx.
+# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar, orden, puertos, arexx, sistema,
+# entorno y portapapeles.
 #
 #   herramientas_declarar(conv)                # una vez, al empezar la conversación
-#   if herramienta_pide_permiso(l) ...         # escribir, editar, orden y arexx, salvo lo aceptado con "Siempre"
+#   if herramienta_pide_permiso(l) ...         # escribir, editar, orden, arexx, poner en entorno y escribir en el
+#                                              # portapapeles, salvo lo de ENV:Inferencia/sin_permiso
 #   vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
 #   resultado = herramienta_ejecutar(l)        # todas menos orden, que va con orden_empezar y orden_acabar
 #
@@ -32,6 +34,9 @@ func herramientas_declarar(c: Conversacion)
     conv_herramienta(c, "editar", "Cambia en un fichero un trozo exacto de texto por otro. El trozo tiene que estar una sola vez; si no, da error. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"buscar\":{\"type\":\"string\",\"description\":\"El texto que hay ahora, exacto\"},\"cambiar\":{\"type\":\"string\",\"description\":\"El texto nuevo\"}},\"required\":[\"fichero\",\"buscar\",\"cambiar\"]}")
     conv_herramienta(c, "puertos", "Lista los puertos ARexx y públicos abiertos: con ellos se sabe a qué programas se les puede mandar órdenes con la herramienta arexx.", "{\"type\":\"object\",\"properties\":{}}")
     conv_herramienta(c, "arexx", "Manda una orden ARexx al puerto de un programa (como MULTIVIEW.1 o FORJA) y devuelve su resultado y su código. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"puerto\":{\"type\":\"string\"},\"orden\":{\"type\":\"string\",\"description\":\"La orden con sus argumentos, como la escribiría un script\"}},\"required\":[\"puerto\",\"orden\"]}")
+    conv_herramienta(c, "sistema", "Mira el sistema: memoria libre, versión de AmigaOS, procesador y MUI; volúmenes con su espacio; asignaciones; tareas en marcha.", "{\"type\":\"object\",\"properties\":{\"que\":{\"type\":\"string\",\"enum\":[\"resumen\",\"volumenes\",\"asignaciones\",\"tareas\"],\"description\":\"resumen si no se da\"}}}")
+    conv_herramienta(c, "entorno", "Variables de entorno de ENV: (las de AmigaOS): leer una, listarlas o poner una (poner pide permiso; guardar=true la deja también en ENVARC:).", "{\"type\":\"object\",\"properties\":{\"accion\":{\"type\":\"string\",\"enum\":[\"leer\",\"listar\",\"poner\"]},\"nombre\":{\"type\":\"string\"},\"valor\":{\"type\":\"string\"},\"guardar\":{\"type\":\"boolean\"}},\"required\":[\"accion\"]}")
+    conv_herramienta(c, "portapapeles", "Lee el texto del portapapeles o escribe uno (escribir pide permiso).", "{\"type\":\"object\",\"properties\":{\"accion\":{\"type\":\"string\",\"enum\":[\"leer\",\"escribir\"]},\"texto\":{\"type\":\"string\"}},\"required\":[\"accion\"]}")
     conv_herramienta(c, "orden", "Ejecuta una línea del Shell de AmigaOS y devuelve lo que escribe y su código de retorno. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"orden\":{\"type\":\"string\",\"description\":\"Como se escribe en el Shell, como List SYS: o Version\"},\"segundos\":{\"type\":\"integer\",\"description\":\"Tiempo máximo (60 si no se da)\"}},\"required\":[\"orden\"]}")
 end
 
@@ -51,7 +56,15 @@ func _clave_permiso(l: Llamada) -> String
 end
 
 func herramienta_pide_permiso(l: Llamada) -> Bool
-    if l.nombre != "escribir" and l.nombre != "editar" and l.nombre != "orden" and l.nombre != "arexx"
+    if l.nombre == "entorno"
+        if llamada_str(l, "accion") != "poner"
+            return false
+        end
+    elif l.nombre == "portapapeles"
+        if llamada_str(l, "accion") != "escribir"
+            return false
+        end
+    elif l.nombre != "escribir" and l.nombre != "editar" and l.nombre != "orden" and l.nombre != "arexx"
         return false
     end
     clave = _clave_permiso(l)
@@ -63,9 +76,37 @@ func herramienta_pide_permiso(l: Llamada) -> Bool
     return true
 end
 
-# "Siempre": lo mismo ya no pregunta (en esta sesión)
+# "Siempre": lo mismo ya no pregunta, tampoco tras reiniciar (ENVARC:Inferencia/sin_permiso)
 func herramienta_permitir_siempre(l: Llamada)
     permitidos.push(_clave_permiso(l))
+    t = ""
+    for p in permitidos
+        if t != ""
+            t = t + ","
+        end
+        t = t + p
+    end
+    env_set("Inferencia/sin_permiso", t, true)
+end
+
+# La lista de lo que no pide permiso: ENV:Inferencia/sin_permiso, separado por comas: "orden list,arexx FORJA.1,
+# entorno,portapapeles,escribir,editar" (una orden por su primera palabra, un puerto por su nombre)
+func permisos_leer()
+    permitidos = []
+    # (otra variable para el texto recortado: reasignar la del for liberaba un texto dos veces; pieza 18 de dashc)
+    for crudo in str_split(env_get("Inferencia/sin_permiso"), ",")
+        p = str_trim(crudo)
+        if p != ""
+            partes = str_split(p, " ")
+            if partes[0] == "arexx" and partes.length > 1
+                permitidos.push("arexx " + str_upper(partes[1]))
+            elif partes[0] == "orden" and partes.length > 1
+                permitidos.push("orden " + str_lower(partes[1]))
+            else
+                permitidos.push(str_lower(p))
+            end
+        end
+    end
 end
 
 # Lo que se ve en la conversación antes de ejecutarla (con el cambio entero, si cambia algo)
@@ -78,6 +119,30 @@ func herramienta_resumen(l: Llamada) -> String
         return "Buscar \"" + llamada_str(l, "texto") + "\" en " + llamada_str(l, "cajon")
     elif l.nombre == "orden"
         return "Orden: " + llamada_str(l, "orden")
+    elif l.nombre == "sistema"
+        q = llamada_str(l, "que")
+        if q == ""
+            q = "resumen"
+        end
+        return "Sistema: " + q
+    elif l.nombre == "entorno"
+        a = llamada_str(l, "accion")
+        if a == "poner"
+            r = "Poner ENV:" + llamada_str(l, "nombre") + " = " + llamada_str(l, "valor")
+            if json_get_bool(l.argumentos, "guardar")
+                r = r + " (también en ENVARC:)"
+            end
+            return r
+        end
+        if a == "listar"
+            return "Listar ENV:"
+        end
+        return "Leer ENV:" + llamada_str(l, "nombre")
+    elif l.nombre == "portapapeles"
+        if llamada_str(l, "accion") == "escribir"
+            return "Escribir en el portapapeles" + _marcar(llamada_str(l, "texto"), "+ ", 12)
+        end
+        return "Leer el portapapeles"
     elif l.nombre == "puertos"
         return "Puertos ARexx"
     elif l.nombre == "arexx"
@@ -328,6 +393,122 @@ func _editar(l: Llamada) -> String
     return "Cambiado: " + fichero
 end
 
+func _version_os() -> String
+    v = library_version("exec.library")
+    if v >= 47
+        return "AmigaOS 3.2"
+    elif v == 46
+        return "AmigaOS 3.1.4"
+    elif v == 45
+        return "AmigaOS 3.9"
+    elif v == 44
+        return "AmigaOS 3.5"
+    elif v >= 40
+        return "AmigaOS 3.1"
+    elif v >= 39
+        return "AmigaOS 3.0"
+    end
+    return "AmigaOS (exec #{v})"
+end
+
+func _kb(bytes: Int) -> String
+    return "#{bytes / 1024} KB"
+end
+
+func _sistema(l: Llamada) -> String
+    q = llamada_str(l, "que")
+    r = ""
+    if q == "" or q == "resumen"
+        r = _version_os() + " (exec.library #{library_version("exec.library")}), procesador #{cpu_model()}\n"
+        mui = library_version("muimaster.library")
+        if mui > 0
+            r = r + "MUI: muimaster.library #{mui}\n"
+        end
+        r = r + "Memoria libre: chip " + _kb(mem_chip_free()) + " de " + _kb(mem_chip_total()) + ", fast " + _kb(mem_fast_free()) + " de " + _kb(mem_fast_total()) + "; el bloque más grande, " + _kb(mem_largest()) + "\n"
+    elif q == "volumenes"
+        n = disks_read(2000)
+        i = 0
+        while i < n
+            if disk_kb(i) < 0
+                r = r + disk_name(i) + ": (no contestó)\n"
+            else
+                r = r + disk_name(i) + ": #{disk_free_kb(i)} KB libres de #{disk_kb(i)} KB\n"
+            end
+            i = i + 1
+        end
+    elif q == "asignaciones"
+        n = assigns_read()
+        i = 0
+        while i < n
+            r = r + assign_name(i) + ": " + assign_path(i) + "\n"
+            i = i + 1
+        end
+    elif q == "tareas"
+        n = tasks_read()
+        i = 0
+        while i < n
+            t = task_entry_name(i)
+            if task_entry_command(i) != ""
+                t = t + " (" + task_entry_command(i) + ")"
+            end
+            r = r + t + ", #{task_entry_state(i)}, prioridad #{task_entry_priority(i)}\n"
+            i = i + 1
+        end
+    else
+        return "Error: que es resumen, volumenes, asignaciones o tareas"
+    end
+    return _cortar(r, TOPE_LEER)
+end
+
+func _entorno(l: Llamada) -> String
+    a = llamada_str(l, "accion")
+    nombre = llamada_str(l, "nombre")
+    if a == "listar"
+        n = dir_read("ENV:")
+        r = ""
+        i = 0
+        while i < n and i < TOPE_LISTAR
+            if dir_entry_is_dir(i)
+                r = r + dir_entry_name(i) + "/\n"
+            else
+                r = r + dir_entry_name(i) + "\n"
+            end
+            i = i + 1
+        end
+        return r
+    end
+    if nombre == ""
+        return "Error: falta el nombre de la variable"
+    end
+    if a == "leer"
+        v = env_get(nombre)
+        if v == ""
+            return "(no existe o está vacía)"
+        end
+        return v
+    elif a == "poner"
+        if env_set(nombre, llamada_str(l, "valor"), json_get_bool(l.argumentos, "guardar"))
+            return "Puesta: " + nombre
+        end
+        return "Error: no se pudo poner " + nombre
+    end
+    return "Error: accion es leer, listar o poner"
+end
+
+func _portapapeles(l: Llamada) -> String
+    if llamada_str(l, "accion") == "escribir"
+        if clip_write_text(latin1_to_utf8(llamada_str(l, "texto")))
+            return "Copiado al portapapeles"
+        end
+        return "Error: no se pudo escribir en el portapapeles"
+    end
+    t = utf8_to_latin1(clip_read_text())
+    if t == ""
+        return "(el portapapeles está vacío o no tiene texto)"
+    end
+    return _cortar(t, TOPE_LEER)
+end
+
 func _puertos() -> String
     n = ports_read()
     r = ""
@@ -372,6 +553,12 @@ func herramienta_ejecutar(l: Llamada) -> String
         return _editar(l)
     elif l.nombre == "puertos"
         return _puertos()
+    elif l.nombre == "sistema"
+        return _sistema(l)
+    elif l.nombre == "entorno"
+        return _entorno(l)
+    elif l.nombre == "portapapeles"
+        return _portapapeles(l)
     elif l.nombre == "arexx"
         return _arexx(l)
     end

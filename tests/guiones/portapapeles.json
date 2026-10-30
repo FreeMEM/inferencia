@@ -1,0 +1,5 @@
+[
+  {"llamadas": [["portapapeles", {"accion": "escribir", "texto": "copiado ñ"}]]},
+  {"llamadas": [["portapapeles", {"accion": "leer"}]]},
+  {"texto": "Portapapeles: {resultado}"}
+]

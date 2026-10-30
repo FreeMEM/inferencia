@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["orden", {"orden": "Echo sin preguntar"}]]},
+  {"texto": "Orden: {resultado}"}
+]

@@ -1,0 +1,71 @@
+# Las herramientas sistema, entorno y portapapeles, y la lista de lo que no pide permiso
+# (ENV:Inferencia/sin_permiso = "entorno,portapapeles,orden echo"): todo eso va sin preguntar, y escribir sí pregunta.
+# Por ARexx, con los guiones del servidor falso. Lo arranca tests/usuario.sh con SIN_PERMISO (y sin PERMISO).
+
+const PUERTO = "INFERENCIA.1"
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func rexx(orden: String) -> String
+    return rexx_send(PUERTO, orden)
+end
+
+# Espera a que deje de pensar (libre o pidiendo permiso) y da su estado
+func esperar() -> String
+    n = 0
+    time_delay(10)
+    e = rexx("ESTADO")
+    while n < 300 and e != "libre" and e != "permiso"
+        time_delay(10)
+        e = rexx("ESTADO")
+        n = n + 1
+    end
+    return e
+end
+
+func preguntar(guion: String) -> String
+    rexx("PREGUNTA GUION " + guion)
+    e = esperar()
+    if e != "libre"
+        return "(estado " + e + ")"
+    end
+    return rexx("RESPUESTA")
+end
+
+Main
+    n = 0
+    while n < 600 and rexx("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    r = preguntar("sistema")
+    ver("sistema", str_contains(r, "AmigaOS 3.1") and str_contains(r, "Memoria libre: chip") and str_contains(r, "procesador 680"), r)
+    r = preguntar("entorno")
+    ver("entorno: poner y leer sin preguntar", str_contains(r, "Entorno: hola ñ") and env_get("PRUEBA_INF") == "hola ñ", r)
+    r = preguntar("portapapeles")
+    ver("portapapeles: escribir y leer sin preguntar", str_contains(r, "Portapapeles: copiado ñ"), r)
+    r = preguntar("echo")
+    ver("orden Echo, en la lista, sin preguntar", str_contains(r, "sin preguntar") and str_contains(r, "código de retorno: 0"), r)
+    rexx("PREGUNTA GUION escribir")
+    ver("escribir, fuera de la lista, pregunta", esperar() == "permiso", rexx("ESTADO"))
+    time_delay(100)
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    rexx("QUIT")
+end

@@ -497,6 +497,7 @@ Main
         mui_canvas_on_input(v.conversacion, EV_LIENZO)
         mui_canvas_buffered(v.conversacion, true)
         mui_app_rexx(app, orden_rexx)
+        permisos_leer()
         conv = conv_nueva(SISTEMA)
         herramientas_declarar(conv)
         vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")

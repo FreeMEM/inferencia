@@ -6,6 +6,7 @@
 #   tests/usuario.sh DASH_DIR tests/clics.dash [captura.png segundos...]
 #   PERMISO=Si tests/usuario.sh ...   # Inferencia contesta sola a los permisos (Si, No o Siempre)
 #   FORJA=~/Projects/forja tests/usuario.sh ...   # con Forja abierta a la vez (DH0:Prueba/juego)
+#   SIN_PERMISO="entorno,orden echo" tests/usuario.sh ...   # ENV:Inferencia/sin_permiso
 set -e
 dash=$1; usuario=$2; shift 2
 png=""
@@ -31,6 +32,7 @@ fi
   echo "C:SetEnv Inferencia/modelo modelo/prueba"
   echo "SetEnv INFERENCIA_SONDA 1"
   [ -z "$PERMISO" ] || echo "SetEnv INFERENCIA_PRUEBA_PERMISO $PERMISO"
+  [ -z "$SIN_PERMISO" ] || echo "SetEnv Inferencia/sin_permiso \"$SIN_PERMISO\""
   if [ -n "$FORJA" ]; then
     echo "SetEnv FORJA_SONDA 1"
     echo "Run >NIL: DH0:Prueba/Forja DH0:Prueba/juego/main.dash"

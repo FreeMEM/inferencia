@@ -19,6 +19,8 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
      `~/Projects/FreeMEMLang/.worktrees/dashc`. Si no, el de `.worktrees/ide-piezas`.
    - Lo que le falte a Dash (un builtin, un fallo del compilador) no se arregla aquí: se encarga a la sesión
      `dashc` con SendMessage, con un ejemplo mínimo que lo muestre. Mientras tanto, seguir con otra tarea.
+   - Si el worktree tiene cambios sin commit de dashc (está a medio hacer algo), compilar con una copia del último
+     commit (`git archive HEAD` a una carpeta del scratchpad, con los `.o` del runtime y `make` en `dashc/`).
 4. **Pruebas en FS-UAE** con `tools/emu_run.py` de ese mismo worktree:
    - Con MUI y red: `--system ~/.cache/dash-emu/sys31muisslweb --set bsdsocket_library=1`.
    - Para TLS real, además `--set uae_cpu_speed=max --set uae_cpu_compatible=false --set jit_compiler=1`.
@@ -113,7 +115,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Puntos de parada en el margen.
   - Seguir, paso, entrar y salir.
   - Variables, pila y la línea actual resaltada.
-- [ ] I7 Herramientas `sistema`, `entorno` y `portapapeles`. Lista de órdenes y puertos que no piden permiso.
+- [x] I7 Herramientas `sistema`, `entorno` y `portapapeles`. Lista de órdenes y puertos que no piden permiso.
 - [ ] I8 Memoria y coste:
   - Tokens y gasto (`usage`).
   - Topes por herramienta.
@@ -243,3 +245,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   prueba leía ENV: mientras Forja lo escribía). Pieza 16 de dashc (`mui_window_open_back`): la vista previa rehecha
   ya no se queda el teclado; `diseno.sh` pasa dos de dos. dashc midió rehacer la vista: 0,9 s (json_parse en Dash
   y MUI calculando la ventana).
+- 2026-10-30, I7: herramientas sistema (resumen: AmigaOS por la versión de exec, procesador, MUI y memoria;
+  volúmenes, asignaciones, tareas), entorno (leer, listar, poner, con permiso para poner y ENVARC: si se pide) y
+  portapapeles (leer; escribir con permiso). Lista de lo que no pide permiso en ENV:Inferencia/sin_permiso, con
+  comas; "Siempre" la amplía y la guarda en ENVARC:. `tests/sistema.dash` en FS-UAE: "TODO BIEN" (ñ en entorno y
+  portapapeles; escribir, fuera de la lista, pregunta). Un string liberado dos veces al reasignar la variable de
+  un for colgaba el Amiga entero: pieza 18 a dashc, rodeado. dashc entregó la pieza 17 (json_parse en C, 2,2 veces
+  más rápido).
