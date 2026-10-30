@@ -1,0 +1,311 @@
+"""El montaje: de la toma (toma.json y sus capturas) al vídeo de 1920x1080, con aire de Amiga.
+
+    python3 montar.py <carpeta de la toma> [<otra toma>...] <salida.mp4>
+
+- Rótulos entre capítulos: azul del Workbench 1.3, letra Topaz, raya naranja y una bola Boing en la portada.
+- La pantalla del Amiga, a escala entera (640x256 → 1280x1024) con líneas de barrido suaves.
+- Subtítulos en Topaz, quemados y además como pista; capítulos en los metadatos; un aro naranja en cada clic.
+"""
+import json
+import math
+import multiprocessing
+import os
+import subprocess
+import sys
+
+from PIL import Image, ImageDraw, ImageFont
+
+W, H, FPS = 1920, 1080, 25
+FUENTES = os.path.expanduser("~/.cache/video-trasfondo/fuentes")
+TOPAZ = os.path.join(FUENTES, "TopazPlus_a1200_v1.0.ttf")
+AZUL_WB = (0, 85, 170)
+NARANJA = (255, 136, 0)
+BLANCO = (255, 255, 255)
+FONDO = (12, 18, 30)
+# la pantalla del Amiga dentro de la captura de Amiberry, y dónde va en el vídeo
+RECORTE = (56, 38, 696, 550)
+PX, PY, ESC_X, ESC_Y = 320, 28, 2, 4      # 1 píxel del Amiga = 2x4 del vídeo
+
+PORTADA = 4.5
+RÓTULO = 3.2
+CIERRE = 6.0
+
+
+def fuente(tam):
+    return ImageFont.truetype(TOPAZ, tam)
+
+
+def bola_boing(d):
+    """La bola Boing: esfera de cuadros rojos y blancos, girada como en la demo de 1984."""
+    img = Image.new("RGBA", (d, d), (0, 0, 0, 0))
+    px = img.load()
+    r = d / 2
+    inclinacion = math.radians(-20)
+    for y in range(d):
+        for x in range(d):
+            nx, ny = (x - r + 0.5) / r, (y - r + 0.5) / r
+            if nx * nx + ny * ny > 1:
+                continue
+            nz = math.sqrt(1 - nx * nx - ny * ny)
+            rx = nx * math.cos(inclinacion) - ny * math.sin(inclinacion)
+            ry = nx * math.sin(inclinacion) + ny * math.cos(inclinacion)
+            lon = math.atan2(rx, nz) + 0.35
+            lat = math.asin(max(-1, min(1, ry)))
+            c = (int((lon + math.pi) / (math.pi / 8)) + int((lat + math.pi / 2) / (math.pi / 8))) % 2
+            luz = 0.55 + 0.45 * max(0, (-0.4 * nx - 0.5 * ny + 0.75 * nz))
+            base = (230, 30, 30) if c else (245, 245, 245)
+            px[x, y] = tuple(int(v * luz) for v in base) + (255,)
+    return img
+
+
+def rotulo(titulo, subtitulo="", portada=False, lineas=()):
+    img = Image.new("RGB", (W, H), AZUL_WB)
+    d = ImageDraw.Draw(img)
+    for y in range(0, H, 4):                                     # barrido, muy suave
+        d.line([(0, y + 3), (W, y + 3)], fill=(0, 76, 153))
+    x0 = 180
+    if portada:
+        bola = bola_boing(360)
+        sombra = Image.new("RGBA", bola.size, (0, 0, 0, 0))
+        sombra.paste((0, 40, 90, 140), mask=bola.split()[3])
+        img.paste(sombra, (W - 560 + 30, 300 + 30), sombra)
+        img.paste(bola, (W - 560, 300), bola)
+    tam = 112 if portada else 88
+    y = 360 if portada else 400
+    d.text((x0, y), titulo, font=fuente(tam), fill=BLANCO)
+    y += tam + 30
+    d.rectangle([x0, y, x0 + 520, y + 10], fill=NARANJA)
+    y += 50
+    if subtitulo:
+        d.text((x0, y), subtitulo, font=fuente(44), fill=(220, 230, 255))
+        y += 70
+    for l in lineas:
+        d.text((x0, y), l, font=fuente(36), fill=(200, 215, 245))
+        y += 54
+    return img
+
+
+def envolver(texto, f, ancho):
+    palabras, lineas, l = texto.split(), [], ""
+    for p in palabras:
+        prueba = (l + " " + p).strip()
+        if f.getlength(prueba) <= ancho:
+            l = prueba
+        else:
+            lineas.append(l)
+            l = p
+    if l:
+        lineas.append(l)
+    return lineas
+
+
+def fondo(capitulo):
+    img = Image.new("RGB", (W, H), FONDO)
+    d = ImageDraw.Draw(img)
+    d.text((32, 40), "Inferencia", font=fuente(40), fill=NARANJA)
+    for i, l in enumerate(envolver(capitulo, fuente(24), 270)):
+        d.text((32, 110 + i * 36), l, font=fuente(24), fill=BLANCO)
+    d.text((32, H - 120), "AmigaOS 3.x", font=fuente(24), fill=(150, 165, 190))
+    d.text((32, H - 84), "hecho en Dash", font=fuente(24), fill=(150, 165, 190))
+    d.rectangle([PX - 6, PY - 6, PX + 1280 + 5, PY + 1024 + 5], outline=(60, 70, 90), width=2)
+    return img
+
+
+def pantalla(fichero):
+    cap = Image.open(fichero).convert("RGB")
+    if cap.width >= 1000:                                         # tarjeta gráfica (RTG): la imagen tal cual
+        if cap.size != (1280, 1024):
+            # a la misma escala en los dos ejes, lo más grande que quepa (1024x768 -> 1280x960), centrada
+            k = min(1280 / cap.width, 1024 / cap.height)
+            cap = cap.resize((round(cap.width * k), round(cap.height * k)), Image.LANCZOS)
+            fondo_rtg = Image.new("RGB", (1280, 1024), (0, 0, 0))
+            fondo_rtg.paste(cap, ((1280 - cap.width) // 2, (1024 - cap.height) // 2))
+            cap = fondo_rtg
+        return cap
+    cap = cap.crop(RECORTE)                                       # 640x512: cada línea del Amiga, doble
+    # de cada par de líneas, la más clara: en una pantalla entrelazada (LightWave) una de las dos sale negra
+    import numpy as np
+    a = np.asarray(cap).reshape(256, 2, 640, 3).max(axis=1)
+    cap = Image.fromarray(a.astype("uint8")).resize((1280, 1024), Image.NEAREST)
+    d = ImageDraw.Draw(cap, "RGBA")
+    for y in range(3, 1024, 4):                                   # la cuarta fila de cada línea, más oscura
+        d.line([(0, y), (1279, y)], fill=(0, 0, 0, 70))
+    return cap
+
+
+def escala(toma):
+    """Píxeles del vídeo por píxel del Amiga: 2x4 en la pantalla nativa de 256 líneas, 1x1 en RTG."""
+    w, h = toma.get("pantalla", (640, 256))
+    if h < 400:
+        return (ESC_X, ESC_Y)
+    k = min(1280 / w, 1024 / h)
+    return (k, k, (1280 - w * k) / 2, (1024 - h * k) / 2)
+
+
+def a_video(x, y, esc=(ESC_X, ESC_Y)):
+    ox, oy = (esc[2], esc[3]) if len(esc) > 2 else (0, 0)
+    return PX + int(ox + x * esc[0] + esc[0] // 2), PY + int(oy + y * esc[1] + esc[1] // 2)
+
+
+def acercar(cap, t, toma, esc):
+    """Los acercamientos de la toma (zooms: t0, t1, x, y, ancho, alto en píxeles del Amiga, 5:4): entra y sale
+    suave en 0,8 s."""
+    for (t0, t1, x, y, an, al) in toma.get("zooms", []):
+        if t0 <= t <= t1:
+            a = max(0.0, min(1.0, (t - t0) / 0.8, (t1 - t) / 0.8))
+            a = a * a * (3 - 2 * a)
+            ox, oy = (esc[2], esc[3]) if len(esc) > 2 else (0, 0)
+            rx, ry, rw, rh = ox + x * esc[0], oy + y * esc[1], an * esc[0], al * esc[1]
+            caja = (rx * a, ry * a, 1280 + (rx + rw - 1280) * a, 1024 + (ry + rh - 1024) * a)
+            return cap.resize((1280, 1024), Image.LANCZOS, box=caja)
+    return cap
+
+
+def componer(base, cap, t, toma):
+    esc = escala(toma)
+    img = base.copy()
+    img.paste(acercar(cap, t, toma, esc), (PX, PY))
+    d = ImageDraw.Draw(img, "RGBA")
+    for (tm, dur, _, x, y, an, al) in toma["marcas"]:
+        if tm <= t <= tm + dur:
+            a = min(1, (t - tm) / 0.3, (tm + dur - t) / 0.3)
+            x0, y0 = a_video(x, y, esc)
+            x1, y1 = a_video(x + an, y + al, esc)
+            for k in range(3):
+                d.rectangle([x0 - 4 - k, y0 - 4 - k, x1 + 4 + k, y1 + 4 + k], outline=NARANJA + (int(230 * a),))
+    for (tc, x, y) in toma["clics"]:
+        k = (t - tc) * FPS
+        if 0 <= k < 8:
+            cx, cy = a_video(x, y, esc)
+            r = 10 + k * 5
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=NARANJA + (int(255 * (1 - k / 8)),), width=5)
+    for (r0, r1, x) in toma.get("rapidos", []):
+        if r0 <= t < r1:
+            f = fuente(40)
+            d.rounded_rectangle([PX + 1280 - 150, PY + 20, PX + 1280 - 20, PY + 80], 10, fill=(0, 0, 0, 190))
+            d.text((PX + 1280 - 130, PY + 30), f"x{x} >>", font=f, fill=NARANJA)
+    for (t0, t1, texto) in toma["subtitulos"]:
+        if t0 <= t < t1:
+            f = fuente(32)
+            lineas = envolver(texto, f, 1180)[:2]
+            alto = 46 * len(lineas) + 24
+            y0 = PY + 1024 - alto - 24
+            ancho = max(f.getlength(l) for l in lineas) + 48
+            d.rounded_rectangle([960 - ancho / 2, y0, 960 + ancho / 2, y0 + alto], 10, fill=(0, 0, 0, 190))
+            for i, l in enumerate(lineas):
+                d.text((960 - f.getlength(l) / 2, y0 + 14 + i * 46), l, font=f, fill=BLANCO)
+    return img
+
+
+_tomas, _fondos = None, {}
+
+
+def _iniciar(tomas, titulos):
+    global _tomas
+    _tomas = tomas
+    for titulo in titulos:
+        _fondos[titulo] = fondo(titulo)
+
+
+def _cuadro(trabajo):
+    """Un cuadro de una toma, compuesto en un proceso aparte: (toma, título del capítulo, hora, captura)."""
+    k, titulo, t, fichero = trabajo
+    return componer(_fondos[titulo], pantalla(fichero), t, _tomas[k]).tobytes()
+
+
+def srt_tiempo(s):
+    ms = int(round(s * 1000))
+    return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+
+
+def main():
+    carpetas, salida = sys.argv[1:-1], sys.argv[-1]
+    tomas = [json.load(open(os.path.join(c, "toma.json"))) for c in carpetas]
+    cierre = tomas[-1].get("cierre", ("Inferencia y Forja", "Libres (MIT)", ["github.com/FreeMEM/inferencia",
+                                      "github.com/FreeMEM/forja", "Hechos en Dash: github.com/FreeMEM/dash"]))
+    # el guion: portada, y por cada capítulo de cada toma su rótulo y su trozo; al final, el cierre
+    tramos = [("rotulo", PORTADA, rotulo("Inferencia", "Una IA que trabaja en el Amiga",
+                                         True, ["Con Forja, el IDE de Dash, y LightWave", "AmigaOS 3.x  -  hecho en Dash"]), "Inferencia", None)]
+    for k, toma in enumerate(tomas):
+        caps = toma["capitulos"]
+        for i, (t0, titulo, sub) in enumerate(caps):
+            t1 = caps[i + 1][0] if i + 1 < len(caps) else toma["fin"]
+            tramos.append(("rotulo", RÓTULO, rotulo(titulo, sub), titulo, None))
+            tramos.append(("toma", (t0, t1), None, titulo, k))
+    tramos.append(("rotulo", CIERRE, rotulo(cierre[0], cierre[1], True, cierre[2]), cierre[0], None))
+
+    ff = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                           "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium",
+                           "-crf", "18", "-pix_fmt", "yuv420p", salida + ".crudo.mp4"], stdin=subprocess.PIPE)
+    pool = multiprocessing.Pool(initializer=_iniciar, initargs=(tomas, [tr[3] for tr in tramos if tr[0] == "toma"]))
+    t_video = 0.0
+    capitulos_video, srt = [], []
+    for tipo, dur, img, nombre, k in tramos:
+        if tipo == "rotulo":                     # cada capítulo empieza en su rótulo
+            capitulos_video.append((t_video, nombre))
+        if tipo == "rotulo":
+            n = int(dur * FPS)
+            datos = img.tobytes()
+            for _ in range(n):
+                ff.stdin.write(datos)
+            t_video += n / FPS
+            continue
+        t0, t1 = dur
+        toma = tomas[k]
+        cuadros = toma["cuadros"]
+        j = 0
+        rapidos = [rp for rp in toma.get("rapidos", []) if rp[0] < t1 and rp[1] > t0]
+
+        def a_video_t(ts):
+            """La hora del vídeo de un momento de la toma, contando los tramos acelerados."""
+            v, t = 0.0, t0
+            for (a, b, x) in sorted(rapidos):
+                if ts <= a:
+                    break
+                v += max(0.0, a - t); t = max(t, a)
+                fin = min(ts, b)
+                v += max(0.0, fin - t) / x; t = max(t, fin)
+            return v + max(0.0, ts - t)
+        for (s0, s1, texto) in toma["subtitulos"]:
+            if s0 < t1 and s1 > t0:
+                srt.append((t_video + a_video_t(max(s0, t0)), t_video + a_video_t(min(s1, t1)), texto))
+
+        def avance(t):
+            for (a, b, x) in rapidos:
+                if a <= t < b:
+                    return x
+            return 1
+        trabajos = []
+        t = t0
+        n = 0
+        while t < t1:
+            while j + 1 < len(cuadros) and cuadros[j + 1][0] <= t:
+                j += 1
+            trabajos.append((k, nombre, t, cuadros[j][1]))
+            t += avance(t) / FPS
+            n += 1
+        for datos in pool.imap(_cuadro, trabajos, chunksize=16):
+            ff.stdin.write(datos)
+        t_video += n / FPS
+    ff.stdin.close()
+    ff.wait()
+    pool.close()
+
+    with open(salida + ".srt", "w") as f:
+        for i, (a, b, texto) in enumerate(srt, 1):
+            f.write(f"{i}\n{srt_tiempo(a)} --> {srt_tiempo(b)}\n{texto}\n\n")
+    with open(salida + ".ffmeta", "w") as f:
+        f.write(";FFMETADATA1\ntitle=Inferencia: una IA que trabaja en el Amiga\n")
+        for i, (a, nombre) in enumerate(capitulos_video):
+            b = capitulos_video[i + 1][0] if i + 1 < len(capitulos_video) else t_video
+            f.write(f"\n[CHAPTER]\nTIMEBASE=1/1000\nSTART={int(a * 1000)}\nEND={int(b * 1000)}\ntitle={nombre}\n")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", salida + ".crudo.mp4", "-i", salida + ".srt",
+                    "-i", salida + ".ffmeta", "-map", "0:v", "-map", "1:s", "-map_metadata", "2",
+                    "-map_chapters", "2", "-c:v", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=spa",
+                    "-movflags", "+faststart", salida], check=True)
+    os.remove(salida + ".crudo.mp4")
+    print(salida, f"{t_video:.1f} s")
+
+
+if __name__ == "__main__":
+    main()

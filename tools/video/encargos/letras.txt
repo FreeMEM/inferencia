@@ -1,0 +1,12 @@
+En este Amiga está abierto LightWave Modeler. Se maneja con guiones ARexx (manual: SYS:LightWave/Documentation/LightWave/ModelerARexx.TXT). Es ARexx normal: el guion empieza con call addlib("LWModelerARexx.port", 0) y después cada función se llama con call delante, por ejemplo call new(). Los vectores van como UN texto con los tres números separados por espacios: "1 0.5 0".
+
+Escribe en DH0:amiga.rexx un guion que haga en 3D la palabra AMIGA:
+0. La primera línea, un comentario: /* La palabra AMIGA */ (ARexx lo exige: sin él, rx dice Program not found).
+   La segunda línea: call addlib("LWModelerARexx.port", 0) (sin ella, las funciones de Modeler no existen).
+1. call new() y call surface("Letras").
+2. f = fontload("Toaster:ToasterFonts/Olnova/Olnova-Bold") y call maketext("AMIGA", f).
+3. bb = boundingbox() y parse var bb n x0 x1 y0 y1 z0 z1. Céntrala: call move(-(x0 + x1) / 2 -(y0 + y1) / 2 0).
+4. Dale grosor: call extrude("Z", 0.2).
+5. say boundingbox() y call save("DH0:amiga.lwo").
+
+Ejecútalo con la orden SYS:Rexxc/rx DH0:amiga.rexx. Si da error, lee el mensaje, corrige el guion y vuelve a ejecutarlo.
