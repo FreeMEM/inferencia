@@ -102,6 +102,10 @@ func _conv_cuerpo_flujo(c: Conversacion, modelo: String, flujo: Bool) -> String
     json_set_str(p, "model", modelo)
     if flujo
         json_set_bool(p, "stream", true)
+        # (Ollama y OpenAI solo dan los tokens en el flujo si se piden así)
+        so = json_object()
+        json_set_bool(so, "include_usage", true)
+        json_set(p, "stream_options", so)
     end
     json_set(p, "messages", c.mensajes)
     # que OpenRouter diga lo que cuesta cada petición (usage.cost)
