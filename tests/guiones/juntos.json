@@ -1,0 +1,5 @@
+[
+  {"llamadas": [["editar", {"fichero": "DH0:Prueba/juego/red.dash", "buscar": "return true", "cambiar": "return false"}]]},
+  {"llamadas": [["leer", {"fichero": "DH0:Prueba/juego/red.dash"}]]},
+  {"texto": "Leído: {resultado}"}
+]

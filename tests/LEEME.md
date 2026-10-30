@@ -16,6 +16,8 @@ el programa a la vez que Inferencia (con `ENV:INFERENCIA_SONDA`) y enseña lo qu
 `PERMISO=Si` contesta solo a los permisos.
 
 - `tests/arexx.dash` (con `PERMISO=Si`): el puerto ARexx entero y las herramientas puertos y arexx.
+- `tests/juntos.dash` (con `PERMISO=Si` y `FORJA=~/Projects/forja`, que arranca Forja a la vez): Inferencia edita
+  y lee un fichero abierto en Forja, y Amiga-I en Forja le manda el fichero.
 - `tests/clics.sh <worktree de Dash> [captura.png segundos...]`, que es `usuario.sh` con `tests/clics.dash`. `tests/clics.dash`
 escribe "GUION ficheros", pulsa los botones Sí, Siempre y No con el ratón (input.device), comprueba el fichero
 y sale con Amiga-Q. Lo que anota sale al final; si todo fue bien, "TODO BIEN".

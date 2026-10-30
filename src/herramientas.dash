@@ -5,7 +5,9 @@
 #   vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
 #   resultado = herramienta_ejecutar(l)        # todas menos orden, que va con orden_empezar y orden_acabar
 #
-# Los resultados llevan topes de tamaño: lo que pasa del tope se corta y se dice.
+# Los resultados llevan topes de tamaño: lo que pasa del tope se corta y se dice. Si Forja tiene abierto el
+# fichero (puerto FORJA.1), leer, escribir y editar usan lo que hay en su editor: los cambios quedan sin guardar
+# y entran en su deshacer.
 
 import "openrouter.dash"
 
@@ -17,6 +19,7 @@ const TOPE_FICHEROS = 400       # ficheros mirados al buscar
 const TOPE_TAMANO_BUSCAR = 200000
 const TOPE_SEGUNDOS = 120       # una orden, como mucho
 const PUERTO_PROPIO = "INFERENCIA.1"
+const PUERTO_FORJA = "FORJA.1"
 
 # Lo aceptado con "Siempre": nombres de herramienta ("escribir", "editar") y, para orden, la primera palabra
 var permitidos: [String] = []
@@ -120,9 +123,42 @@ func ruta_unir(cajon: String, nombre: String) -> String
     return cajon + "/" + nombre
 end
 
+# --- Forja: si tiene el fichero abierto, se lee y se cambia allí (los cambios entran en su deshacer) ---
+
+func forja_abierto(fichero: String) -> Bool
+    r = rexx_send(PUERTO_FORJA, "ABIERTO \"" + fichero + "\"")
+    return rexx_rc() == 0 and r == "1"
+end
+
+func _contar(s: String, sub: String) -> Int
+    n = 0
+    p = str_find(s, sub)
+    while p >= 0
+        n = n + 1
+        p = str_find_from(s, sub, p + sub.length)
+    end
+    return n
+end
+
+# El texto de un fichero: el de Forja si lo tiene abierto, si no el del disco (nil si no se puede leer)
+func texto_de(fichero: String) -> String
+    if forja_abierto(fichero)
+        t = rexx_send(PUERTO_FORJA, "TEXTO \"" + fichero + "\"")
+        if rexx_rc() == 0
+            return t
+        end
+    end
+    return file_read_text(fichero)
+end
+
+func _forja_cambiar(fichero: String, desde: Int, hasta: Int, texto: String) -> Bool
+    rexx_send(PUERTO_FORJA, "CAMBIAR \"" + fichero + "\" #{desde} #{hasta} \"" + texto + "\"")
+    return rexx_rc() == 0
+end
+
 func _leer(l: Llamada) -> String
     fichero = llamada_str(l, "fichero")
-    texto = file_read_text(fichero)
+    texto = texto_de(fichero)
     if texto == nil
         return "Error: no se puede leer " + fichero
     end
@@ -237,6 +273,12 @@ end
 func _escribir(l: Llamada) -> String
     fichero = llamada_str(l, "fichero")
     contenido = llamada_str(l, "contenido")
+    if forja_abierto(fichero)
+        n = _contar(texto_de(fichero), "\n") + 1
+        if _forja_cambiar(fichero, 1, n, contenido)
+            return "Escrito en Forja, sin guardar: " + fichero + " (#{contenido.length} caracteres)"
+        end
+    end
     if file_write_text(fichero, contenido)
         return "Escrito: " + fichero + " (#{contenido.length} caracteres)"
     end
@@ -247,7 +289,8 @@ func _editar(l: Llamada) -> String
     fichero = llamada_str(l, "fichero")
     buscar = llamada_str(l, "buscar")
     cambiar = llamada_str(l, "cambiar")
-    texto = file_read_text(fichero)
+    en_forja = forja_abierto(fichero)
+    texto = texto_de(fichero)
     if texto == nil
         return "Error: no se puede leer " + fichero
     end
@@ -260,6 +303,23 @@ func _editar(l: Llamada) -> String
     end
     if str_find_from(texto, buscar, p + 1) >= 0
         return "Error: el trozo está más de una vez en " + fichero + ". Da un trozo más largo."
+    end
+    if en_forja
+        # las líneas enteras donde está el trozo, cambiadas en Forja
+        desde = _contar(texto[0:p], "\n") + 1
+        hasta = desde + _contar(buscar, "\n")
+        ini = p
+        while ini > 0 and texto[ini - 1:ini] != "\n"
+            ini = ini - 1
+        end
+        fin = str_find_from(texto, "\n", p + buscar.length)
+        if fin < 0
+            fin = texto.length
+        end
+        if _forja_cambiar(fichero, desde, hasta, texto[ini:p] + cambiar + texto[p + buscar.length:fin])
+            return "Cambiado en Forja, sin guardar: " + fichero
+        end
+        return "Error: Forja no aceptó el cambio en " + fichero
     end
     nuevo = texto[0:p] + cambiar + texto[p + buscar.length:]
     if not file_write_text(fichero, nuevo)

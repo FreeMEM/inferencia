@@ -97,7 +97,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 - [x] I6 ARexx en Inferencia:
   - Puerto `INFERENCIA` con `PREGUNTA`, `CONTEXTO`, `NUEVA`, `MOSTRAR` y `OCULTAR`.
   - Herramientas `arexx` y `puertos`.
-- [ ] F6 ARexx en Forja:
+- [x] F6 ARexx en Forja:
   - Puerto con `ABRIR`, `SELECCION`, `CAMBIAR`, `COMPILAR` y `EJECUTAR`.
   - Botón Inferencia.
   - Si Forja está abierta, Inferencia la usa para los cambios.
@@ -213,3 +213,10 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   cualquier usuario de prueba; `tests/arexx.dash` maneja Inferencia solo por ARexx con dos guiones nuevos del
   servidor falso: "TODO BIEN" en FS-UAE, y `clics.sh` sigue bien. No probado: arexx contra el puerto de otro
   programa (llega con Forja, F6).
+- 2026-10-30, F6: puerto FORJA.1 (ABRIR, ABIERTO, TEXTO, SELECCION, CAMBIAR con deshacer, GUARDAR, COMPILAR,
+  EJECUTAR, ESTADO, ERRORES) y botón Inferencia (Amiga-I): manda el fichero o la selección con ADJUNTAR (orden
+  nueva de Inferencia, para que Inferencia no tenga que pedírselo a Forja mientras Forja espera) y la arranca si
+  no está. Inferencia lee, escribe y edita a través de Forja los ficheros que tiene abiertos (sin guardar, con
+  deshacer). Pruebas en FS-UAE, "TODO BIEN": `tests/juntos.dash` (los dos programas a la vez) y
+  `forja/tests/rexx.dash`. Pedida a dashc la pieza 14: un RESULT vacío llega como el de la orden anterior (la
+  prueba lo rodea).

@@ -1,0 +1,100 @@
+# Inferencia y Forja juntas, por ARexx: con red.dash abierto en Forja, Inferencia lo edita (el cambio queda en el
+# editor de Forja, sin guardar) y lo lee de allí; después Amiga-I en Forja le manda el fichero a Inferencia, que
+# lo lleva en la siguiente pregunta. Sale con QUIT a las dos (Forja pregunta por los cambios: Descartar).
+# Lo arranca tests/juntos.sh (con PERMISO=Si); anota en DH0:Prueba/usuario.txt.
+
+const INFERENCIA = "INFERENCIA.1"
+const FORJA = "FORJA.1"
+const RED = "DH0:Prueba/juego/red.dash"
+const AMIGA = 8
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func respuesta() -> String
+    n = 0
+    time_delay(10)
+    while n < 600 and rexx_send(INFERENCIA, "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    return rexx_send(INFERENCIA, "RESPUESTA")
+end
+
+func activar(titulo: String) -> Bool
+    if input_active_title() != titulo
+        w = window_find(titulo)
+        if w != 0
+            window_found_activate(w)
+            time_delay(10)
+        end
+    end
+    return input_active_title() == titulo
+end
+
+func campo(nombre: String, i: Int) -> Int
+    return Int(str_split(env_get(nombre), " ")[i])
+end
+
+Main
+    n = 0
+    while n < 600 and (rexx_send(INFERENCIA, "ESTADO") != "libre" or rexx_send(FORJA, "ESTADO") != "libre")
+        time_delay(10)
+        n = n + 1
+    end
+    ver("los dos puertos", n < 600, "")
+    rexx_send(FORJA, "ABRIR \"" + RED + "\" 3")
+    ver("Forja abre red.dash", rexx_send(FORJA, "ABIERTO \"" + RED + "\"") == "1", "rc #{rexx_rc()}")
+
+    rexx_send(INFERENCIA, "PREGUNTA GUION juntos")
+    r = respuesta()
+    ver("Inferencia lee de Forja lo editado", str_contains(r, "return false"), r)
+    t = rexx_send(FORJA, "TEXTO \"" + RED + "\"")
+    ver("el cambio está en el editor de Forja", str_contains(t, "return false") and not str_contains(t, "return true"), t)
+    d = file_read_text(RED)
+    ver("el disco sigue igual (sin guardar)", d != nil and str_contains(d, "return true"), d)
+
+    # Amiga-I sobre el editor de Forja: el fichero va a Inferencia
+    if activar("Forja")
+        input_move(campo("FORJA_EDITOR", 0) + campo("FORJA_EDITOR", 2) / 2, campo("FORJA_EDITOR", 1) + campo("FORJA_EDITOR", 3) / 2)
+        time_delay(10)
+        input_key(0x17, AMIGA)
+        time_delay(100)
+        rexx_send(INFERENCIA, "PREGUNTA ¿Qué hace esto?")
+        r = respuesta()
+        ver("el botón Inferencia le manda el fichero", str_contains(r, "func conectar()") and str_contains(r, "red.dash"), r)
+    else
+        ver("activar Forja", false, input_active_title())
+    end
+
+    time_delay(100)
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    rexx_send(FORJA, "QUIT")
+    n = 0
+    while n < 40 and input_active_title() != "Cambios sin guardar"
+        time_delay(5)
+        n = n + 1
+    end
+    if input_active_title() == "Cambios sin guardar"
+        time_delay(25)
+        input_key(0x22, 0)
+    end
+    time_delay(50)
+    rexx_send(INFERENCIA, "QUIT")
+end

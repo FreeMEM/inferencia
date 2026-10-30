@@ -5,6 +5,7 @@
 #
 #   tests/usuario.sh DASH_DIR tests/clics.dash [captura.png segundos...]
 #   PERMISO=Si tests/usuario.sh ...   # Inferencia contesta sola a los permisos (Si, No o Siempre)
+#   FORJA=~/Projects/forja tests/usuario.sh ...   # con Forja abierta a la vez (DH0:Prueba/juego)
 set -e
 dash=$1; usuario=$2; shift 2
 png=""
@@ -18,6 +19,11 @@ cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
 mkdir -p "$tmp/sys/Prueba"
 [ ! -d "$aqui/tests/prueba" ] || cp -r "$aqui/tests/prueba/." "$tmp/sys/Prueba/"
 "$dash/dash" "$usuario" -o "$tmp/sys/Prueba/Usuario"
+if [ -n "$FORJA" ]; then
+  # Forja a la vez, con su proyecto de prueba (tests/prueba/juego de Forja)
+  "$dash/dash" "$FORJA/src/main.dash" -o "$tmp/sys/Prueba/Forja"
+  cp -r "$FORJA/tests/prueba/juego" "$tmp/sys/Prueba/"
+fi
 {
   echo "C:MakeDir ENV:Inferencia"
   echo "C:SetEnv Inferencia/url http://127.0.0.1:40900/api/v1/chat/completions"
@@ -25,6 +31,10 @@ mkdir -p "$tmp/sys/Prueba"
   echo "C:SetEnv Inferencia/modelo modelo/prueba"
   echo "SetEnv INFERENCIA_SONDA 1"
   [ -z "$PERMISO" ] || echo "SetEnv INFERENCIA_PRUEBA_PERMISO $PERMISO"
+  if [ -n "$FORJA" ]; then
+    echo "SetEnv FORJA_SONDA 1"
+    echo "Run >NIL: DH0:Prueba/Forja DH0:Prueba/juego/main.dash"
+  fi
   echo "Run >NIL: DH0:Prueba/Usuario"
 } >> "$tmp/sys/S/Startup-Extra"
 python3 "$aqui/tests/servidor_falso.py" 40900 2>/dev/null &

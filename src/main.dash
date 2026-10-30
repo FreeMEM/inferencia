@@ -9,7 +9,8 @@
 #
 # Puerto ARexx INFERENCIA.1: PREGUNTA "texto" la manda (sin esperar: RC 5 si está ocupada); ESTADO dice libre,
 # pidiendo, permiso u orden; RESPUESTA da la última respuesta cuando está libre (RC 5 si no, 10 si hubo un
-# error); CONTEXTO fichero [desde hasta] lo añade a la siguiente pregunta; NUEVA, MOSTRAR y OCULTAR.
+# error); CONTEXTO fichero [desde hasta] lo añade a la siguiente pregunta, y ADJUNTAR título (con el texto en las
+# líneas siguientes) también; NUEVA, MOSTRAR y OCULTAR.
 #
 # Para las pruebas: ENV:INFERENCIA_PRUEBA con un texto lo manda al abrir, y el programa se cierra solo unos
 # segundos después de la respuesta. "@fichero" toma el texto de ese fichero. ENV:INFERENCIA_PRUEBA_LINEA lleva la
@@ -429,7 +430,8 @@ end
 
 # Las órdenes ARexx que MUI no contesta solo (QUIT, SHOW, HIDE... sí las contesta)
 func orden_rexx(linea: String) -> String
-    orden = str_upper(str_split(str_trim(linea), " ")[0])
+    primera = str_split(linea, "\n")[0]
+    orden = str_upper(str_split(str_trim(primera), " ")[0])
     a = _argumento(linea)
     if orden == "PREGUNTA"
         if estado != LIBRE
@@ -457,6 +459,18 @@ func orden_rexx(linea: String) -> String
         return ultima_respuesta
     elif orden == "CONTEXTO"
         return _contexto(a)
+    elif orden == "ADJUNTAR"
+        # "ADJUNTAR título" y el texto en las líneas siguientes (lo manda Forja)
+        p = str_find(linea, "\n")
+        if p < 0
+            mui_rexx_fail(10)
+            return ""
+        end
+        titulo = str_trim(primera[8:])
+        contexto = contexto + "Contexto (" + titulo + "):\n```\n" + linea[p + 1:] + "\n```\n\n"
+        vista_anadir(QUIEN_HERRAMIENTA, "Contexto: " + titulo)
+        refrescar()
+        return ""
     elif orden == "NUEVA"
         nueva_conversacion()
         return ""
