@@ -6,8 +6,9 @@ AI on the Amiga. You talk to a language model from an MUI window, and the model 
 change files, run Shell commands, send ARexx commands to other programs and look at the system. It asks before
 changing anything.
 
-This is a test version: it works in the emulator, but it has not been tried on a real Amiga yet. The program
-itself is in Spanish for now; an English catalog will come.
+This is a test version: it works in the emulator, but it has not been tried on a real Amiga yet. It speaks
+English or Spanish, following the Locale preferences (the English catalog is in `Catalogs/`). The preferences
+window and menus in this README are named in Spanish; in English they read Provider, Address, New key...
 
 ## Requirements
 

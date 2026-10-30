@@ -1,0 +1,211 @@
+## version $VER: Inferencia.catalog 1.0 (30.10.2026)
+## language english
+## codeset 0
+;
+MSG_1
+Thinking...
+; Pensando...
+MSG_2
+Allow it?
+; ¿Lo permites?
+MSG_3
+Command running
+; Orden en marcha
+MSG_4
+The conversation is long: asking for a summary of what came before.
+; La conversación es larga: pido un resumen de lo anterior.
+MSG_5
+Could not summarize (
+; No se pudo resumir (
+MSG_6
+); it stays whole.
+; ); sigue entera.
+MSG_7
+Summarized. What came before goes as a summary.
+; Resumida. Lo de antes va como resumen.
+MSG_8
+Writing...
+; Escribiendo...
+MSG_9
+Error: 
+; Error: 
+MSG_10
+The answer was cut: the model reached its length limit.
+; La respuesta se cortó: el modelo llegó a su tope de longitud.
+MSG_12
+Output
+; Salida
+MSG_14
+Stopped.
+; Parado.
+MSG_16
+Provider: 
+; Proveedor: 
+MSG_17
+Saved in 
+; Guardada en 
+MSG_18
+Could not save in 
+; No se pudo guardar en 
+MSG_19
+ is not an Inferencia conversation.
+;  no es una conversación de Inferencia.
+MSG_20
+(summary of what came before)
+; (resumen de lo anterior)
+MSG_21
+Opened 
+; Abierta 
+MSG_22
+Context: 
+; Contexto: 
+MSG_23
+Context: 
+; Contexto: 
+MSG_24
+Type below (Return: new line) and press Send or Amiga+Return. Provider and model: Amiga-P.
+; Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P.
+MSG_25
+summary
+; resumen
+MSG_26
+System: 
+; Sistema: 
+MSG_27
+ (also in ENVARC:)
+;  (también en ENVARC:)
+MSG_28
+List ENV:
+; Listar ENV:
+MSG_29
+Read the clipboard
+; Leer el portapapeles
+MSG_30
+ARexx ports
+; Puertos ARexx
+MSG_31
+Unknown tool: 
+; Herramienta desconocida: 
+MSG_40
+Read 
+; Leer 
+MSG_41
+List 
+; Listar 
+MSG_42
+Search \"%1\" in %2
+; Buscar \"%1\" en %2
+MSG_43
+Command: 
+; Orden: 
+MSG_44
+Set ENV:
+; Poner ENV:
+MSG_45
+Read ENV:
+; Leer ENV:
+MSG_46
+Write to the clipboard
+; Escribir en el portapapeles
+MSG_47
+ARexx to %1: %2
+; ARexx a %1: %2
+MSG_48
+Write %1 (%2 characters)
+; Escribir %1 (%2 caracteres)
+MSG_49
+Edit 
+; Editar 
+MSG_50
+(%1 more lines)
+; (%1 líneas más)
+MSG_51
+%1 tokens
+; %1 tokens
+MSG_52
+%1 tk · %2 $
+; %1 tk · %2 $
+MSG_53
+Stopped: the model has done %1 rounds in a row with tools.
+; Parado: el modelo lleva %1 vueltas seguidas con herramientas.
+MSG_54
+Yes
+; Sí
+MSG_55
+No
+; No
+MSG_56
+Always
+; Siempre
+MSG_57
+Stopped
+; Parado
+MSG_58
+Answer: 
+; Respuesta: 
+MSG_200
+Inferencia
+; Inferencia
+MSG_201
+Project
+; Proyecto
+MSG_202
+New conversation
+; Conversación nueva
+MSG_203
+Open conversation...
+; Abrir conversación...
+MSG_204
+Save conversation...
+; Guardar conversación...
+MSG_205
+Preferences...
+; Preferencias...
+MSG_206
+Quit
+; Salir
+MSG_207
+Model:
+; Modelo:
+MSG_208
+_Send
+; _Enviar
+MSG_209
+Amiga+Return in the text sends it too
+; Amiga+Return en el texto también lo manda
+MSG_210
+S_top
+; _Parar
+MSG_211
+Inferencia: preferences
+; Inferencia: preferencias
+MSG_212
+Provider:
+; Proveedor:
+MSG_213
+OpenRouter|Anthropic|OpenAI and compatible
+; OpenRouter|Anthropic|OpenAI y compatibles
+MSG_214
+Address:
+; Dirección:
+MSG_215
+New key:
+; Clave nueva:
+MSG_216
+Model:
+; Modelo:
+MSG_217
+Limit:
+; Tope:
+MSG_218
+With no new key, the current one stays.\nLimit: characters before summarizing.
+; Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir.
+MSG_219
+_Save
+; _Guardar
+MSG_220
+_Use
+; _Usar
+MSG_221
+_Cancel
+; _Cancelar

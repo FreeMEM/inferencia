@@ -281,7 +281,7 @@ func vista_responder(texto: String)
         for p in vista_bloques[i].parrafos
             if p.tipo == P_BOTONES
                 p.tipo = P_TEXTO
-                p.palabras = _palabras_llanas("Respuesta: " + texto, CURSIVA)
+                p.palabras = _palabras_llanas(tr(58, "Respuesta: ") + texto, CURSIVA)
                 vista_ancho_maquetado = -1
                 return
             end

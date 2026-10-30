@@ -3,19 +3,19 @@
   "windows": [
     {
       "name": "Principal",
-      "title": "Inferencia",
+      "tr": 200, "title": "Inferencia",
       "id": 1,
       "size": [60, 70],
       "menus": [
         {
-          "title": "Proyecto",
+          "tr": 201, "title": "Proyecto",
           "items": [
-            { "label": "Conversación nueva", "key": "N", "event": 20 },
-            { "label": "Abrir conversación...", "key": "O", "event": 22 },
-            { "label": "Guardar conversación...", "key": "S", "event": 21 },
-            { "label": "Preferencias...", "key": "P", "event": 23 },
+            { "tr": 202, "label": "Conversación nueva", "key": "N", "event": 20 },
+            { "tr": 203, "label": "Abrir conversación...", "key": "O", "event": 22 },
+            { "tr": 204, "label": "Guardar conversación...", "key": "S", "event": 21 },
+            { "tr": 205, "label": "Preferencias...", "key": "P", "event": 23 },
             { "separator": true },
-            { "label": "Salir", "key": "Q", "event": 99 }
+            { "tr": 206, "label": "Salir", "key": "Q", "event": 99 }
           ]
         }
       ],
@@ -25,7 +25,7 @@
           {
             "type": "hgroup",
             "children": [
-              { "type": "label", "text": "Modelo:" },
+              { "type": "label", "tr": 207, "text": "Modelo:" },
               { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 180 },
               { "type": "text", "name": "estado", "text": "", "weight": 320 }
             ]
@@ -44,8 +44,8 @@
               {
                 "type": "vgroup",
                 "children": [
-                  { "type": "button", "name": "enviar", "label": "_Enviar", "event": 1, "help": "Amiga+Return en el texto también lo manda" },
-                  { "type": "button", "name": "parar", "label": "_Parar", "event": 2, "disabled": true }
+                  { "type": "button", "name": "enviar", "tr": {"label": 208, "help": 209}, "label": "_Enviar", "event": 1, "help": "Amiga+Return en el texto también lo manda" },
+                  { "type": "button", "name": "parar", "tr": 210, "label": "_Parar", "event": 2, "disabled": true }
                 ]
               }
             ]
@@ -55,7 +55,7 @@
     },
     {
       "name": "Preferencias",
-      "title": "Inferencia: preferencias",
+      "tr": 211, "title": "Inferencia: preferencias",
       "id": 2,
       "close": 42,
       "root": {
@@ -65,26 +65,26 @@
             "type": "columns",
             "columns": 2,
             "children": [
-              { "type": "label", "text": "Proveedor:" },
-              { "type": "cycle", "name": "proveedor", "options": "OpenRouter|Anthropic|OpenAI y compatibles", "change": 43 },
-              { "type": "label", "text": "Dirección:" },
+              { "type": "label", "tr": 212, "text": "Proveedor:" },
+              { "type": "cycle", "name": "proveedor", "tr": 213, "options": "OpenRouter|Anthropic|OpenAI y compatibles", "change": 43 },
+              { "type": "label", "tr": 214, "text": "Dirección:" },
               { "type": "string", "name": "url", "text": "", "max": 300 },
-              { "type": "label", "text": "Clave nueva:" },
+              { "type": "label", "tr": 215, "text": "Clave nueva:" },
               { "type": "string", "name": "clave", "text": "", "max": 300 },
-              { "type": "label", "text": "Modelo:" },
+              { "type": "label", "tr": 216, "text": "Modelo:" },
               { "type": "string", "name": "modelo", "text": "", "max": 200 },
-              { "type": "label", "text": "Tope:" },
+              { "type": "label", "tr": 217, "text": "Tope:" },
               { "type": "string", "name": "tope", "text": "", "max": 10 }
             ]
           },
-          { "type": "text", "name": "nota", "text": "Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir." },
+          { "type": "text", "name": "nota", "tr": 218, "text": "Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir." },
           {
             "type": "hgroup",
             "children": [
-              { "type": "button", "name": "guardar", "label": "_Guardar", "event": 40 },
-              { "type": "button", "name": "usar", "label": "_Usar", "event": 41 },
+              { "type": "button", "name": "guardar", "tr": 219, "label": "_Guardar", "event": 40 },
+              { "type": "button", "name": "usar", "tr": 220, "label": "_Usar", "event": 41 },
               { "type": "space" },
-              { "type": "button", "name": "cancelar", "label": "_Cancelar", "event": 42 }
+              { "type": "button", "name": "cancelar", "tr": 221, "label": "_Cancelar", "event": 42 }
             ]
           }
         ]

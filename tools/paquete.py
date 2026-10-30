@@ -62,6 +62,9 @@ def main():
     (caj / "LEEME.info").write_bytes(situar(info(documento(), WBPROJECT, herramienta="SYS:Utilities/MultiView"), 90, 6))
     (caj / "README.info").write_bytes(situar(info(documento(), WBPROJECT, herramienta="SYS:Utilities/MultiView"), 160, 6))
     shutil.copy(raiz / "LICENSE", caj / "LICENSE")
+    # el catálogo inglés (tools/catalogos.py), junto al programa: PROGDIR:Catalogs/english
+    subprocess.run([sys.executable, str(raiz / "tools/catalogos.py"), str(dash), "catalog"], check=True)
+    shutil.copytree(build / "Catalogs", caj / "Catalogs")
     lha = build / f"inferencia-{version}.lha"
     lha.unlink(missing_ok=True)
     subprocess.run(["/opt/amiga/bin/lha", "ao5q", str(lha), "Inferencia", "Inferencia.info"], cwd=dest, check=True)

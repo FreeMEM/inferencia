@@ -31,6 +31,8 @@
 # qué hace (libre, pidiendo, "permiso N" con N la vez que pregunta, orden) y ENV:INFERENCIA_BOTONES dónde están los botones ("x,y x,y...",
 # desde la esquina de la ventana).
 
+@catalog "Inferencia.catalog" 1 "español"
+
 import "config.dash"
 import "openrouter.dash"
 import "herramientas.dash"
@@ -144,18 +146,18 @@ func poner_estado(e: Int)
     mui_set_enabled(v.parar, ocupado)
     mui_set_enabled(v.enviar, not ocupado)
     if e == PIDIENDO
-        mui_set_text(v.estado, "Pensando...")
+        mui_set_text(v.estado, tr(1, "Pensando..."))
     elif e == PERMISO
-        mui_set_text(v.estado, "¿Lo permites?")
+        mui_set_text(v.estado, tr(2, "¿Lo permites?"))
     elif e == ORDEN
-        mui_set_text(v.estado, "Orden en marcha")
+        mui_set_text(v.estado, tr(3, "Orden en marcha"))
     else
-        t = "#{tokens_entrada + tokens_salida} tokens"
+        t = hueco(tr(51, "%1 tokens"), "#{tokens_entrada + tokens_salida}")
         if coste > 0
             # en dólares con cuatro decimales; corto, para que quepa al lado del modelo
             c = coste / 100
             cent = "" + (c % 10000 + 10000)
-            t = "#{tokens_entrada + tokens_salida} tk · #{c / 10000}," + cent[1:] + " $"
+            t = hueco2(tr(52, "%1 tk · %2 $"), "#{tokens_entrada + tokens_salida}", "#{c / 10000}," + cent[1:])
         end
         mui_set_text(v.estado, t)
         if prueba
@@ -206,7 +208,7 @@ func resumir_si_hace_falta() -> Bool
     if conv_tamano(conv) <= tope() or conv_longitud(conv) < 4
         return false
     end
-    vista_anadir(QUIEN_AVISO, "La conversación es larga: pido un resumen de lo anterior.")
+    vista_anadir(QUIEN_AVISO, tr(4, "La conversación es larga: pido un resumen de lo anterior."))
     resumiendo = conv_para_resumen(conv)
     flujo = flujo_nuevo()
     parcial = false
@@ -224,10 +226,10 @@ func al_resumir()
     tokens_salida = tokens_salida + t.salida
     coste = coste + t.coste
     if t.error != "" or t.texto == ""
-        vista_anadir(QUIEN_AVISO, "No se pudo resumir (" + t.error + "); sigue entera.")
+        vista_anadir(QUIEN_AVISO, tr(5, "No se pudo resumir (") + t.error + tr(6, "); sigue entera."))
     else
         conv_resumir(conv, t.texto)
-        vista_anadir(QUIEN_AVISO, "Resumida. Lo de antes va como resumen.")
+        vista_anadir(QUIEN_AVISO, tr(7, "Resumida. Lo de antes va como resumen."))
     end
     pedir()
 end
@@ -244,7 +246,7 @@ func mostrar_parcial()
         vista_anadir(QUIEN_MODELO, flujo_texto(flujo))
         parcial = true
     end
-    mui_set_text(v.estado, "Escribiendo...")
+    mui_set_text(v.estado, tr(8, "Escribiendo..."))
     refrescar()
 end
 
@@ -258,7 +260,7 @@ func al_llegar()
     carga = nil
     if t.error != ""
         parcial = false
-        vista_anadir(QUIEN_AVISO, "Error: " + t.error)
+        vista_anadir(QUIEN_AVISO, tr(9, "Error: ") + t.error)
         ultimo_error = t.error
         poner_estado(LIBRE)
         refrescar()
@@ -278,7 +280,7 @@ func al_llegar()
     if t.llamadas.length == 0
         ultima_respuesta = t.texto
         if t.fin == "length"
-            vista_anadir(QUIEN_AVISO, "La respuesta se cortó: el modelo llegó a su tope de longitud.")
+            vista_anadir(QUIEN_AVISO, tr(10, "La respuesta se cortó: el modelo llegó a su tope de longitud."))
         end
         poner_estado(LIBRE)
         refrescar()
@@ -288,7 +290,7 @@ func al_llegar()
     indice = 0
     vueltas = vueltas + 1
     if vueltas > MAX_VUELTAS
-        vista_anadir(QUIEN_AVISO, "Parado: el modelo lleva #{MAX_VUELTAS} vueltas seguidas con herramientas.")
+        vista_anadir(QUIEN_AVISO, hueco(tr(53, "Parado: el modelo lleva %1 vueltas seguidas con herramientas."), "#{MAX_VUELTAS}"))
         cerrar_pendientes("No se ejecutó: demasiadas vueltas seguidas.")
         poner_estado(LIBRE)
         refrescar()
@@ -303,7 +305,7 @@ func seguir()
         l = pendientes[indice]
         vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
         if herramienta_pide_permiso(l)
-            var botones: [String] = ["Sí", "No", "Siempre"]
+            var botones: [String] = [tr(54, "Sí"), tr(55, "No"), tr(56, "Siempre")]
             vista_botones(botones)
             permisos_pedidos = permisos_pedidos + 1
             poner_estado(PERMISO)
@@ -343,11 +345,11 @@ func resultado(r: String)
         vista_anadir(QUIEN_AVISO, r)
     elif l.nombre == "orden" and r != NO_PERMITIDO
         lineas = str_split(str_trim(r), "\n")
-        s = "Salida"
+        s = tr(12, "Salida")
         i = 0
         for linea in lineas
             if i == LINEAS_SALIDA and lineas.length > LINEAS_SALIDA + 1
-                s = s + "\n(#{lineas.length - i} líneas más)"
+                s = s + "\n" + hueco(tr(50, "(%1 líneas más)"), "#{lineas.length - i}")
                 break
             end
             s = s + "\n" + linea
@@ -372,16 +374,16 @@ func responder_permiso(n: Int)
     end
     l = pendientes[indice]
     if n == 1
-        vista_responder("No")
+        vista_responder(tr(55, "No"))
         resultado(NO_PERMITIDO)
         seguir()
         return
     end
     if n == 2
         herramienta_permitir_siempre(l)
-        vista_responder("Siempre")
+        vista_responder(tr(56, "Siempre"))
     else
-        vista_responder("Sí")
+        vista_responder(tr(54, "Sí"))
     end
     poner_estado(PIDIENDO)
     if ejecutar(l)
@@ -426,10 +428,10 @@ func parar()
         resultado(orden_acabar(orden_en_marcha) + "\n[parada por el usuario]")
         orden_en_marcha = 0
     elif estado == PERMISO
-        vista_responder("Parado")
+        vista_responder(tr(57, "Parado"))
     end
     cerrar_pendientes("Parado por el usuario.")
-    vista_anadir(QUIEN_AVISO, "Parado.")
+    vista_anadir(QUIEN_AVISO, tr(14, "Parado."))
     poner_estado(LIBRE)
     refrescar()
 end
@@ -530,7 +532,7 @@ func preferencias_aplicar(guardar: Bool)
     config_guardar(cfg, guardar)
     env_set("Inferencia/tope", str_trim(mui_get_text(pref.tope)), guardar)
     mui_window_close(pref.window)
-    vista_anadir(QUIEN_AVISO, "Proveedor: " + cfg.proveedor + ", " + cfg.url + ".")
+    vista_anadir(QUIEN_AVISO, tr(16, "Proveedor: ") + cfg.proveedor + ", " + cfg.url + ".")
     refrescar()
 end
 
@@ -538,11 +540,11 @@ end
 
 func guardar_conversacion(fichero: String) -> Bool
     if file_write_text(fichero, conv_guardar(conv, cfg.modelo))
-        vista_anadir(QUIEN_AVISO, "Guardada en " + fichero + ".")
+        vista_anadir(QUIEN_AVISO, tr(17, "Guardada en ") + fichero + ".")
         refrescar()
         return true
     end
-    vista_anadir(QUIEN_AVISO, "No se pudo guardar en " + fichero + ".")
+    vista_anadir(QUIEN_AVISO, tr(18, "No se pudo guardar en ") + fichero + ".")
     refrescar()
     return false
 end
@@ -554,7 +556,7 @@ func abrir_conversacion(fichero: String) -> Bool
         c = conv_cargar(texto, conv)
     end
     if c == nil
-        vista_anadir(QUIEN_AVISO, fichero + " no es una conversación de Inferencia.")
+        vista_anadir(QUIEN_AVISO, fichero + tr(19, " no es una conversación de Inferencia."))
         refrescar()
         return false
     end
@@ -570,7 +572,7 @@ func abrir_conversacion(fichero: String) -> Bool
         contenido = utf8_to_latin1(json_get_str(m, "content"))
         if rol == "user"
             if str_starts(contenido, "Resumen de la conversación")
-                vista_anadir(QUIEN_AVISO, "(resumen de lo anterior)")
+                vista_anadir(QUIEN_AVISO, tr(20, "(resumen de lo anterior)"))
             else
                 vista_anadir(QUIEN_USUARIO, contenido)
             end
@@ -589,7 +591,7 @@ func abrir_conversacion(fichero: String) -> Bool
         end
         i = i + 1
     end
-    vista_anadir(QUIEN_AVISO, "Abierta " + fichero + ".")
+    vista_anadir(QUIEN_AVISO, tr(21, "Abierta ") + fichero + ".")
     tokens_entrada = 0
     tokens_salida = 0
     coste = 0
@@ -658,7 +660,7 @@ func _contexto(a: String) -> String
         que = fichero + ", líneas #{desde} a #{hasta}"
     end
     contexto = contexto + "Contexto (" + que + "):\n```\n" + texto + "\n```\n\n"
-    vista_anadir(QUIEN_HERRAMIENTA, "Contexto: " + que)
+    vista_anadir(QUIEN_HERRAMIENTA, tr(22, "Contexto: ") + que)
     refrescar()
     return ""
 end
@@ -703,7 +705,7 @@ func orden_rexx(linea: String) -> String
         end
         titulo = str_trim(primera[8:])
         contexto = contexto + "Contexto (" + titulo + "):\n```\n" + linea[p + 1:] + "\n```\n\n"
-        vista_anadir(QUIEN_HERRAMIENTA, "Contexto: " + titulo)
+        vista_anadir(QUIEN_HERRAMIENTA, tr(23, "Contexto: ") + titulo)
         refrescar()
         return ""
     elif orden == "NUEVA"
@@ -755,7 +757,7 @@ Main
         permisos_leer()
         conv = conv_nueva(SISTEMA)
         herramientas_declarar(conv)
-        vista_anadir(QUIEN_AVISO, "Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P.")
+        vista_anadir(QUIEN_AVISO, tr(24, "Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P."))
         mui_window_open(v.window)
         mui_set_active(v.window, v.entrada)
         sonda = env_get("INFERENCIA_SONDA") != ""

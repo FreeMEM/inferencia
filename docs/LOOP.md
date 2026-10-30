@@ -126,7 +126,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 - [x] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
 - [x] I11a y F10a Acabado: iconos, paquete `.lha`, README en inglés y la lista de lo que queda para la primera
   versión publicada (docs/PUBLICAR.md). Publicarla lo decide el usuario.
-- [ ] I11b y F10b Catálogos en inglés: los textos de los programas con `tr()` y los de los `.dashui` con "tr",
+- [ ] I11b y F10b Catálogos en inglés (I11b hecha; falta F10b, Forja): los textos de los programas con `tr()` y los de los `.dashui` con "tr",
   `tools/catalogo.py` de Dash, y el catálogo en el paquete.
 
 ## Bitácora
@@ -291,3 +291,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   docs/PUBLICAR.md: Dash 2.0, probar en un Amiga de verdad (TLS en un 68020), el inglés, la API de pago, las
   piezas 23 y 24, Aminet. Los iconos no se han visto en un Workbench emulado (solo dibujados en el PC). dashc no
   reproduce la pieza 24; sospecha: env_set de la sonda dentro de la orden ARexx tarda y el cliente se cansa.
+- 2026-10-30, I11b: Inferencia en inglés. tr() en los textos que ve el usuario (avisos, estado, el resumen de
+  cada herramienta, los botones de permiso; los que llevan números, con hueco/hueco2 y %1) y "tr" en el .dashui:
+  69 textos, @catalog "Inferencia.catalog" 1 "español". Lo que lee el modelo (descripciones y resultados de las
+  herramientas, el mensaje de sistema) sigue en castellano. catalogos/Inferencia.cd y english.ct (traducido);
+  tools/catalogos.py (cd, ct, catalog) usa catalogo.py de Dash saltándose los import de lib/, que no encuentra
+  (pieza 25 a dashc); el paquete lleva Catalogs/english. En FS-UAE (CATALOGOS=1 en ventana.sh) sale en inglés.

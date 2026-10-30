@@ -6,7 +6,8 @@ La IA en el Amiga. Hablas con un modelo de lenguaje desde una ventana MUI, y el 
 sistema: leer y cambiar ficheros, ejecutar órdenes del Shell, mandar órdenes ARexx a otros programas y mirar el
 sistema. Antes de cambiar algo, pregunta.
 
-Es una versión de prueba: funciona en el emulador, pero aún no se ha probado en un Amiga de verdad.
+Es una versión de prueba: funciona en el emulador, pero aún no se ha probado en un Amiga de verdad. Habla en
+castellano o en inglés, según el idioma de las Preferencias de Locale (el catálogo inglés va en `Catalogs/`).
 
 ## Qué necesita
 

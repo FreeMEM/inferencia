@@ -1,0 +1,140 @@
+; Texts of src/main.dash (tools/catalogo.py)
+;
+MSG_1 (1//)
+Pensando...
+MSG_2 (2//)
+¿Lo permites?
+MSG_3 (3//)
+Orden en marcha
+MSG_4 (4//)
+La conversación es larga: pido un resumen de lo anterior.
+MSG_5 (5//)
+No se pudo resumir (
+MSG_6 (6//)
+); sigue entera.
+MSG_7 (7//)
+Resumida. Lo de antes va como resumen.
+MSG_8 (8//)
+Escribiendo...
+MSG_9 (9//)
+Error: 
+MSG_10 (10//)
+La respuesta se cortó: el modelo llegó a su tope de longitud.
+MSG_12 (12//)
+Salida
+MSG_14 (14//)
+Parado.
+MSG_16 (16//)
+Proveedor: 
+MSG_17 (17//)
+Guardada en 
+MSG_18 (18//)
+No se pudo guardar en 
+MSG_19 (19//)
+ no es una conversación de Inferencia.
+MSG_20 (20//)
+(resumen de lo anterior)
+MSG_21 (21//)
+Abierta 
+MSG_22 (22//)
+Contexto: 
+MSG_23 (23//)
+Contexto: 
+MSG_24 (24//)
+Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P.
+MSG_25 (25//)
+resumen
+MSG_26 (26//)
+Sistema: 
+MSG_27 (27//)
+ (también en ENVARC:)
+MSG_28 (28//)
+Listar ENV:
+MSG_29 (29//)
+Leer el portapapeles
+MSG_30 (30//)
+Puertos ARexx
+MSG_31 (31//)
+Herramienta desconocida: 
+MSG_40 (40//)
+Leer 
+MSG_41 (41//)
+Listar 
+MSG_42 (42//)
+Buscar \"%1\" en %2
+MSG_43 (43//)
+Orden: 
+MSG_44 (44//)
+Poner ENV:
+MSG_45 (45//)
+Leer ENV:
+MSG_46 (46//)
+Escribir en el portapapeles
+MSG_47 (47//)
+ARexx a %1: %2
+MSG_48 (48//)
+Escribir %1 (%2 caracteres)
+MSG_49 (49//)
+Editar 
+MSG_50 (50//)
+(%1 líneas más)
+MSG_51 (51//)
+%1 tokens
+MSG_52 (52//)
+%1 tk · %2 $
+MSG_53 (53//)
+Parado: el modelo lleva %1 vueltas seguidas con herramientas.
+MSG_54 (54//)
+Sí
+MSG_55 (55//)
+No
+MSG_56 (56//)
+Siempre
+MSG_57 (57//)
+Parado
+MSG_58 (58//)
+Respuesta: 
+MSG_200 (200//)
+Inferencia
+MSG_201 (201//)
+Proyecto
+MSG_202 (202//)
+Conversación nueva
+MSG_203 (203//)
+Abrir conversación...
+MSG_204 (204//)
+Guardar conversación...
+MSG_205 (205//)
+Preferencias...
+MSG_206 (206//)
+Salir
+MSG_207 (207//)
+Modelo:
+MSG_208 (208//)
+_Enviar
+MSG_209 (209//)
+Amiga+Return en el texto también lo manda
+MSG_210 (210//)
+_Parar
+MSG_211 (211//)
+Inferencia: preferencias
+MSG_212 (212//)
+Proveedor:
+MSG_213 (213//)
+OpenRouter|Anthropic|OpenAI y compatibles
+MSG_214 (214//)
+Dirección:
+MSG_215 (215//)
+Clave nueva:
+MSG_216 (216//)
+Modelo:
+MSG_217 (217//)
+Tope:
+MSG_218 (218//)
+Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir.
+MSG_219 (219//)
+_Guardar
+MSG_220 (220//)
+_Usar
+MSG_221 (221//)
+_Cancelar

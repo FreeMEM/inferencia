@@ -5,6 +5,7 @@
 #   LINEA=0 tests/ventana.sh ...     # la vista sube a esa línea después de la respuesta
 #   PERMISO=Si tests/ventana.sh ...  # contesta solo a los permisos (Si, No o Siempre), a los tres segundos
 #   TIEMPO=s tests/ventana.sh ...    # el tope del emulador (150 s por defecto)
+#   CATALOGOS=1 tests/ventana.sh ...   # con build/Catalogs (tools/paquete.py o catalogo.py): sale en inglés
 #   REAL=modelo tests/ventana.sh ... # contra OpenRouter de verdad, con la clave de ~/.config/inferencia/openrouter
 #
 # DASH_DIR: el worktree de Dash 2.0 que compila (./dash y tools/emu_run.py). La pregunta se manda al abrir
@@ -44,6 +45,8 @@ fi
 } >> "$tmp/sys/S/Startup-Extra"
 # la pregunta en Latin-1, como la escribiría el Amiga (emu_run escribe el Startup-Sequence en UTF-8)
 mkdir -p "$tmp/sys/Prueba"
+# con CATALOGOS=1, el catálogo inglés junto al programa (PROGDIR:Catalogs; el sistema emulado está en inglés)
+[ -z "$CATALOGOS" ] || cp -r "$aqui/build/Catalogs" "$tmp/sys/Catalogs"
 [ ! -d "$aqui/tests/prueba" ] || cp -r "$aqui/tests/prueba/." "$tmp/sys/Prueba/"
 printf '%s' "$pregunta" | iconv -f utf-8 -t latin1 > "$tmp/sys/Prueba/pregunta"
 if [ -z "$REAL" ]; then

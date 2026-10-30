@@ -111,50 +111,50 @@ end
 # Lo que se ve en la conversación antes de ejecutarla (con el cambio entero, si cambia algo)
 func herramienta_resumen(l: Llamada) -> String
     if l.nombre == "leer"
-        return "Leer " + llamada_str(l, "fichero")
+        return tr(40, "Leer ") + llamada_str(l, "fichero")
     elif l.nombre == "listar"
-        return "Listar " + llamada_str(l, "cajon")
+        return tr(41, "Listar ") + llamada_str(l, "cajon")
     elif l.nombre == "buscar"
-        return "Buscar \"" + llamada_str(l, "texto") + "\" en " + llamada_str(l, "cajon")
+        return hueco2(tr(42, "Buscar \"%1\" en %2"), llamada_str(l, "texto"), llamada_str(l, "cajon"))
     elif l.nombre == "orden"
-        return "Orden: " + llamada_str(l, "orden")
+        return tr(43, "Orden: ") + llamada_str(l, "orden")
     elif l.nombre == "sistema"
         q = llamada_str(l, "que")
         if q == ""
-            q = "resumen"
+            q = tr(25, "resumen")
         end
-        return "Sistema: " + q
+        return tr(26, "Sistema: ") + q
     elif l.nombre == "entorno"
         a = llamada_str(l, "accion")
         if a == "poner"
-            r = "Poner ENV:" + llamada_str(l, "nombre") + " = " + llamada_str(l, "valor")
+            r = tr(44, "Poner ENV:") + llamada_str(l, "nombre") + " = " + llamada_str(l, "valor")
             if json_get_bool(l.argumentos, "guardar")
-                r = r + " (también en ENVARC:)"
+                r = r + tr(27, " (también en ENVARC:)")
             end
             return r
         end
         if a == "listar"
-            return "Listar ENV:"
+            return tr(28, "Listar ENV:")
         end
-        return "Leer ENV:" + llamada_str(l, "nombre")
+        return tr(45, "Leer ENV:") + llamada_str(l, "nombre")
     elif l.nombre == "portapapeles"
         if llamada_str(l, "accion") == "escribir"
-            return "Escribir en el portapapeles" + _marcar(llamada_str(l, "texto"), "+ ", 12)
+            return tr(46, "Escribir en el portapapeles") + _marcar(llamada_str(l, "texto"), "+ ", 12)
         end
-        return "Leer el portapapeles"
+        return tr(29, "Leer el portapapeles")
     elif l.nombre == "puertos"
-        return "Puertos ARexx"
+        return tr(30, "Puertos ARexx")
     elif l.nombre == "arexx"
-        return "ARexx a " + llamada_str(l, "puerto") + ": " + llamada_str(l, "orden")
+        return hueco2(tr(47, "ARexx a %1: %2"), llamada_str(l, "puerto"), llamada_str(l, "orden"))
     elif l.nombre == "escribir"
         contenido = llamada_str(l, "contenido")
-        r = "Escribir " + llamada_str(l, "fichero") + " (#{contenido.length} caracteres)"
+        r = hueco2(tr(48, "Escribir %1 (%2 caracteres)"), llamada_str(l, "fichero"), "#{contenido.length}")
         return r + _marcar(contenido, "+ ", 12)
     elif l.nombre == "editar"
-        r = "Editar " + llamada_str(l, "fichero")
+        r = tr(49, "Editar ") + llamada_str(l, "fichero")
         return r + _marcar(llamada_str(l, "buscar"), "- ", 20) + _marcar(llamada_str(l, "cambiar"), "+ ", 20)
     end
-    return "Herramienta desconocida: " + l.nombre
+    return tr(31, "Herramienta desconocida: ") + l.nombre
 end
 
 # Las líneas de un texto, cada una con su marca delante, hasta n
@@ -164,7 +164,7 @@ func _marcar(texto: String, marca: String, n: Int) -> String
     i = 0
     for linea in lineas
         if i == n
-            r = r + "\n" + marca + "(#{lineas.length - n} líneas más)"
+            r = r + "\n" + marca + hueco(tr(50, "(%1 líneas más)"), "#{lineas.length - n}")
             break
         end
         r = r + "\n" + marca + linea
