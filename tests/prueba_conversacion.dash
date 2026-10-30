@@ -15,10 +15,12 @@ Main
         conv_resultado(c, l.id, "contenido de " + llamada_str(l, "ruta"))
     end
     carga = conv_empezar(c, cfg)
+    f = flujo_nuevo()
     while not http_avanzar(carga)
+        flujo_anadir(f, http_flujo_leer(carga))
         time_delay(1)
     end
-    t = conv_acabar(c, carga, cfg)
+    t = conv_acabar(c, carga, cfg, f)
     Print "turno 2: [#{t.error}] fin=#{t.fin} llamadas=#{t.llamadas.length}"
     Print "  " + t.texto
     Print "mensajes: #{conv_longitud(c)}"

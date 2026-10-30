@@ -16,6 +16,9 @@
 # Preferencias (Amiga-P): proveedor, dirección, clave, modelo y tope; Usar las deja hasta reiniciar, Guardar también
 # en ENVARC:.
 #
+# Con el formato de OpenAI, la respuesta se pide según llega ("stream": true, eventos SSE) y se va enseñando;
+# ENV:Inferencia/flujo = no lo quita.
+#
 # La conversación se reenvía entera en cada petición. Si pasa de ENV:Inferencia/tope caracteres (60000), se quitan
 # los resultados viejos de las herramientas y, si aún pasa, se pide al modelo un resumen de lo anterior.
 #
@@ -85,6 +88,10 @@ var tokens_entrada: Int = 0
 var tokens_salida: Int = 0
 var coste: Int = 0                  # millonésimas de dólar
 var resumiendo: Conversacion = nil  # la petición del resumen, mientras se hace
+var flujo: Flujo = nil              # la respuesta según llega
+var parcial: Bool = false           # el último bloque de la vista es la respuesta que va llegando
+var parcial_ms: Int = 0             # cuándo se enseñó por última vez
+const PARCIAL_MS = 250
 var barra_valor: Int = -1
 var tics_cierre: Int = -1
 var sonda: Bool = false
@@ -174,6 +181,8 @@ func enviar(texto: String)
 end
 
 func pedir()
+    flujo = flujo_nuevo()
+    parcial = false
     carga = conv_empezar(conv, cfg)
     poner_estado(PIDIENDO)
     refrescar()
@@ -199,6 +208,8 @@ func resumir_si_hace_falta() -> Bool
     end
     vista_anadir(QUIEN_AVISO, "La conversación es larga: pido un resumen de lo anterior.")
     resumiendo = conv_para_resumen(conv)
+    flujo = flujo_nuevo()
+    parcial = false
     carga = conv_empezar(resumiendo, cfg)
     poner_estado(PIDIENDO)
     refrescar()
@@ -206,7 +217,7 @@ func resumir_si_hace_falta() -> Bool
 end
 
 func al_resumir()
-    t = conv_acabar(resumiendo, carga, cfg)
+    t = conv_acabar(resumiendo, carga, cfg, flujo)
     carga = nil
     resumiendo = nil
     tokens_entrada = tokens_entrada + t.entrada
@@ -221,15 +232,32 @@ func al_resumir()
     pedir()
 end
 
+# La respuesta que va llegando, en la conversación (no la de un resumen; como mucho cada PARCIAL_MS)
+func mostrar_parcial()
+    if resumiendo != nil or flujo.texto == "" or time_ms() - parcial_ms < PARCIAL_MS
+        return
+    end
+    parcial_ms = time_ms()
+    if parcial
+        vista_cambiar_ultimo(QUIEN_MODELO, flujo_texto(flujo))
+    else
+        vista_anadir(QUIEN_MODELO, flujo_texto(flujo))
+        parcial = true
+    end
+    mui_set_text(v.estado, "Escribiendo...")
+    refrescar()
+end
+
 # Ha llegado la respuesta del modelo
 func al_llegar()
     if resumiendo != nil
         al_resumir()
         return
     end
-    t = conv_acabar(conv, carga, cfg)
+    t = conv_acabar(conv, carga, cfg, flujo)
     carga = nil
     if t.error != ""
+        parcial = false
         vista_anadir(QUIEN_AVISO, "Error: " + t.error)
         ultimo_error = t.error
         poner_estado(LIBRE)
@@ -240,8 +268,13 @@ func al_llegar()
     tokens_salida = tokens_salida + t.salida
     coste = coste + t.coste
     if t.texto != ""
-        vista_anadir(QUIEN_MODELO, t.texto)
+        if parcial
+            vista_cambiar_ultimo(QUIEN_MODELO, t.texto)
+        else
+            vista_anadir(QUIEN_MODELO, t.texto)
+        end
     end
+    parcial = false
     if t.llamadas.length == 0
         ultima_respuesta = t.texto
         if t.fin == "length"
@@ -359,8 +392,14 @@ end
 # Sigue lo que esté en marcha
 func avanzar()
     if estado == PIDIENDO
-        if carga != nil and http_avanzar(carga)
+        if carga == nil
+            return
+        end
+        if http_avanzar(carga)
             al_llegar()
+        elif conv_con_flujo(cfg)
+            flujo_anadir(flujo, http_flujo_leer(carga))
+            mostrar_parcial()
         end
     elif estado == ORDEN
         if run_ready(orden_en_marcha)
@@ -381,6 +420,7 @@ func parar()
         http_cancelar(carga)
         carga = nil
         resumiendo = nil
+        parcial = false
     elif estado == ORDEN
         run_break(orden_en_marcha)
         resultado(orden_acabar(orden_en_marcha) + "\n[parada por el usuario]")
@@ -715,7 +755,7 @@ Main
         permisos_leer()
         conv = conv_nueva(SISTEMA)
         herramientas_declarar(conv)
-        vista_anadir(QUIEN_AVISO, "Escribe abajo y pulsa Enviar. Modelo y proveedor en ENV:Inferencia/.")
+        vista_anadir(QUIEN_AVISO, "Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P.")
         mui_window_open(v.window)
         mui_set_active(v.window, v.entrada)
         sonda = env_get("INFERENCIA_SONDA") != ""

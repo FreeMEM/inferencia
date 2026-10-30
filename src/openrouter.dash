@@ -94,8 +94,15 @@ func conv_longitud(c: Conversacion) -> Int
 end
 
 func _conv_cuerpo(c: Conversacion, modelo: String) -> String
+    return _conv_cuerpo_flujo(c, modelo, false)
+end
+
+func _conv_cuerpo_flujo(c: Conversacion, modelo: String, flujo: Bool) -> String
     p = json_object()
     json_set_str(p, "model", modelo)
+    if flujo
+        json_set_bool(p, "stream", true)
+    end
     json_set(p, "messages", c.mensajes)
     # que OpenRouter diga lo que cuesta cada petición (usage.cost)
     u = json_object()
@@ -282,17 +289,155 @@ func _turno_error(e: String) -> Turno
     return Turno("", ls, "", "", 0, 0, e, 0)
 end
 
-# Manda la conversación sin esperar: http_avanzar(carga) hasta que dé true, y luego conv_acabar
+# ¿Se pide la respuesta según llega (streaming)? Con el formato de OpenAI, salvo ENV:Inferencia/flujo = no
+func conv_con_flujo(cfg: Config) -> Bool
+    return cfg.proveedor != "anthropic" and str_lower(env_get("Inferencia/flujo")) != "no"
+end
+
+# Manda la conversación sin esperar: http_avanzar(carga) hasta que dé true (con flujo, http_flujo_leer y
+# flujo_anadir en cada vuelta), y luego conv_acabar
 func conv_empezar(c: Conversacion, cfg: Config) -> Carga
+    if conv_con_flujo(cfg)
+        return http_empezar_flujo(cfg.url, "POST", _conv_cuerpo_flujo(c, cfg.modelo, true), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
+    end
     return http_empezar_metodo(cfg.url, "POST", _conv_cuerpo_de(c, cfg), "application/json", _conv_cabeceras(cfg), ESPERA_PETICION)
 end
 
-# La respuesta de una carga ya acabada. Si fue bien, el mensaje del modelo se añade a la conversación.
-func conv_acabar(c: Conversacion, carga: Carga, cfg: Config) -> Turno
+# La respuesta de una carga ya acabada (f: lo que llegó por el flujo). Si fue bien, el mensaje del modelo se añade
+# a la conversación.
+func conv_acabar(c: Conversacion, carga: Carga, cfg: Config, f: Flujo) -> Turno
     if cfg.proveedor == "anthropic"
         return _anth_leer(c, carga.respuesta)
     end
-    return _conv_leer(c, carga.respuesta)
+    if not conv_con_flujo(cfg) or carga.respuesta.error != "" or carga.respuesta.estado != 200
+        # sin flujo, o un error: el cuerpo entero, como siempre
+        return _conv_leer(c, carga.respuesta)
+    end
+    flujo_anadir(f, http_flujo_leer(carga) + "\n")
+    return _flujo_turno(c, f)
+end
+
+# --- La respuesta según llega: eventos SSE "data: {...}" con trozos (delta) del mensaje ---
+
+struct Flujo
+    pendiente: String     # lo recibido que aún no forma una línea entera
+    texto: String         # lo que dice el modelo hasta ahora (UTF-8)
+    ids: [String]         # las llamadas a herramientas, por su índice
+    nombres: [String]
+    args: [String]
+    fin: String
+    modelo: String
+    entrada: Int
+    salida: Int
+    coste: Int
+    error: String
+end
+
+func flujo_nuevo() -> Flujo
+    var a: [String] = []
+    var b: [String] = []
+    var d: [String] = []
+    return Flujo("", "", a, b, d, "", "", 0, 0, 0, "")
+end
+
+# Lo que llega (cualquier trozo: puede cortar una línea por la mitad)
+func flujo_anadir(f: Flujo, trozo: String)
+    if trozo == ""
+        return
+    end
+    f.pendiente = f.pendiente + str_replace(trozo, "\r", "")
+    p = str_find(f.pendiente, "\n")
+    while p >= 0
+        linea = f.pendiente[0:p]
+        f.pendiente = f.pendiente[p + 1:]
+        if str_starts(linea, "data: ") and linea != "data: [DONE]"
+            # (en una variable: pasado como temporal, json_path lo liberaba al reasignar su parámetro; pieza 23)
+            ev = json_parse(linea[6:])
+            _flujo_evento(f, ev)
+        end
+        p = str_find(f.pendiente, "\n")
+    end
+end
+
+func _flujo_evento(f: Flujo, j: Json)
+    if j == nil
+        return
+    end
+    if json_has(j, "error")
+        f.error = utf8_to_latin1(json_path_str(j, "error.message"))
+        return
+    end
+    if json_get_str(j, "model") != ""
+        f.modelo = json_get_str(j, "model")
+    end
+    if json_get(j, "usage") != nil
+        f.entrada = json_path_int(j, "usage.prompt_tokens")
+        f.salida = json_path_int(j, "usage.completion_tokens")
+        f.coste = _millonesimas(json_path(j, "usage.cost"))
+    end
+    d = json_path(j, "choices.0.delta")
+    if json_path_str(j, "choices.0.finish_reason") != ""
+        f.fin = json_path_str(j, "choices.0.finish_reason")
+    end
+    if d == nil
+        return
+    end
+    f.texto = f.texto + json_get_str(d, "content")
+    llamadas = json_get(d, "tool_calls")
+    k = 0
+    while llamadas != nil and k < json_length(llamadas)
+        tc = json_at(llamadas, k)
+        i = json_get_int(tc, "index")
+        while f.ids.length <= i
+            f.ids.push("")
+            f.nombres.push("")
+            f.args.push("")
+        end
+        if json_get_str(tc, "id") != ""
+            f.ids[i] = json_get_str(tc, "id")
+        end
+        f.nombres[i] = f.nombres[i] + json_path_str(tc, "function.name")
+        f.args[i] = f.args[i] + json_path_str(tc, "function.arguments")
+        k = k + 1
+    end
+end
+
+# El texto que ha llegado, en Latin-1, para enseñarlo mientras llega
+func flujo_texto(f: Flujo) -> String
+    return utf8_to_latin1(f.texto)
+end
+
+func _flujo_turno(c: Conversacion, f: Flujo) -> Turno
+    if f.error != ""
+        return _turno_error(f.error)
+    end
+    msj = json_object()
+    json_set_str(msj, "role", "assistant")
+    json_set_str(msj, "content", f.texto)
+    var ls: [Llamada] = []
+    if f.ids.length > 0
+        llamadas = json_array()
+        i = 0
+        while i < f.ids.length
+            tc = json_object()
+            json_set_str(tc, "id", f.ids[i])
+            json_set_str(tc, "type", "function")
+            fn = json_object()
+            json_set_str(fn, "name", f.nombres[i])
+            json_set_str(fn, "arguments", f.args[i])
+            json_set(tc, "function", fn)
+            json_push(llamadas, tc)
+            a = json_parse(f.args[i])
+            if a == nil
+                a = json_object()
+            end
+            ls.push(Llamada(f.ids[i], f.nombres[i], a, f.args[i]))
+            i = i + 1
+        end
+        json_set(msj, "tool_calls", llamadas)
+    end
+    json_push(c.mensajes, msj)
+    return Turno(utf8_to_latin1(f.texto), ls, f.fin, f.modelo, f.entrada, f.salida, "", f.coste)
 end
 
 # Manda la conversación y espera la respuesta

@@ -93,9 +93,8 @@ end
 # entorno,portapapeles,escribir,editar" (una orden por su primera palabra, un puerto por su nombre)
 func permisos_leer()
     permitidos = []
-    # (otra variable para el texto recortado: reasignar la del for liberaba un texto dos veces; pieza 18 de dashc)
-    for crudo in str_split(env_get("Inferencia/sin_permiso"), ",")
-        p = str_trim(crudo)
+    for p in str_split(env_get("Inferencia/sin_permiso"), ",")
+        p = str_trim(p)
         if p != ""
             partes = str_split(p, " ")
             if partes[0] == "arexx" and partes.length > 1

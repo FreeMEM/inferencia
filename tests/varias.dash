@@ -1,0 +1,44 @@
+# Escribe una pregunta de dos líneas en la entrada de Inferencia (Return: otra línea) y la manda con Amiga+Return;
+# la respuesta del servidor falso repite la pregunta: deben llegar las dos líneas. Lo arranca tests/usuario.sh.
+
+func anotar(texto: String)
+    t = file_read_text("DH0:Prueba/usuario.txt")
+    if t == nil
+        t = ""
+    end
+    file_write_text("DH0:Prueba/usuario.txt", t + texto + "\n")
+end
+
+Main
+    n = 0
+    while n < 600 and rexx_send("INFERENCIA.1", "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    w = window_find("Inferencia")
+    if w != 0
+        window_found_activate(w)
+        time_delay(20)
+    end
+    input_text("Primera parte,")
+    input_key(0x44, 0)
+    input_text("y la segunda.")
+    # para la captura, con las dos líneas escritas
+    time_delay(200)
+    input_key(0x44, 8)
+    time_delay(20)
+    n = 0
+    while n < 300 and rexx_send("INFERENCIA.1", "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    r = rexx_send("INFERENCIA.1", "RESPUESTA")
+    if str_contains(r, "Primera parte,\ny la segunda.")
+        anotar("bien: dos líneas, mandadas con Amiga+Return")
+        anotar("TODO BIEN")
+    else
+        anotar("FALLO: la respuesta: [" + r + "]")
+    end
+    time_delay(200)
+    rexx_send("INFERENCIA.1", "QUIT")
+end

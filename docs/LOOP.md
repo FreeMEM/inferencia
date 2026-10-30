@@ -121,7 +121,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Topes por herramienta.
   - Guardar y cargar la conversación.
   - Resumir cuando crece.
-- [ ] I9 (espera las piezas 20 y 21 de dashc) Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
+- [x] I9 Ver el texto mientras llega (streaming SSE) y entrada de varias líneas.
 - [x] I10 Más proveedores (Anthropic Messages, Ollama) y una ventana de preferencias.
 - [ ] F9 Buscar y reemplazar, preferencias, ir a línea, proyectos guardados.
 - [ ] I11 y F10 Acabado:
@@ -268,3 +268,13 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   /v1/messages y acepta /ollama/ sin clave. `tests/proveedor.dash` en FS-UAE: "TODO BIEN" con los dos;
   `arexx.dash` sigue bien. No probado contra la API de Anthropic de verdad (cuesta dinero). Compilado con una copia
   de ide-piezas f1a082c (la carpeta tenía cambios a medias de dashc).
+- 2026-10-30, I9: la entrada es un campo de varias líneas (pieza 21, `mui_text_editor`: Return, otra línea;
+  Amiga+Return manda). Con el formato de OpenAI, la respuesta se pide con "stream": true y se lee con
+  `http_empezar_flujo` y `http_flujo_leer` (pieza 20): los eventos SSE, juntados por líneas aunque lleguen cortados,
+  dan el texto (que se enseña cada 250 ms, rehaciendo solo el último bloque de la vista) y las llamadas a
+  herramientas por trozos; el uso y el coste llegan en el último. Anthropic sigue sin flujo; ENV:Inferencia/flujo
+  = no lo quita. El servidor falso manda SSE con chunked (eventos partidos en dos trozos) y "LENTO" para verlo.
+  En FS-UAE: flujo, varias, memoria, arexx, clics y los dos proveedores, "TODO BIEN"; flujo con --memcheck, 0
+  errores y 0 vivos. Por el camino: env_set dejaba el final del valor viejo si otro lo leía (pieza 22, arreglada) y
+  un temporal pasado a una función se liberaba antes de tiempo (pieza 23, rodeado con una variable). Quitado el
+  rodeo de la pieza 18.

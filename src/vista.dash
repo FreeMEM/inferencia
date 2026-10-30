@@ -67,6 +67,7 @@ var vista_alto_linea: Int = 10
 var vista_alto_zona: Int = 0
 var vista_rango_pendiente: Bool = false
 var vista_al_final: Bool = true     # seguir la última línea cuando llega texto
+var _vista_inicio: [Int] = []       # la primera línea de cada bloque ya partido
 var _pen_fondo: Int = -1
 var _pen_usuario: Int = 0
 var _pen_modelo: Int = 0
@@ -330,7 +331,31 @@ func vista_anadir(quien: Int, texto: String)
     vista_al_final = true
 end
 
+# Cambia el texto del último bloque (la respuesta que va llegando): solo se vuelve a partir ese bloque
+func vista_cambiar_ultimo(quien: Int, texto: String)
+    n = vista_bloques.length
+    if n == 0
+        vista_anadir(quien, texto)
+        return
+    end
+    var ps: [Parrafo] = []
+    if quien == QUIEN_MODELO
+        ps = _leer_markdown(texto)
+    else
+        ps = _leer_llano(texto, 0, "")
+    end
+    vista_bloques[n - 1] = Bloque(quien, ps)
+    if vista_maquetados == n and _vista_inicio.length == n
+        inicio = _vista_inicio.pop()
+        while vista_lineas.length > inicio
+            vista_lineas.pop()
+        end
+        vista_maquetados = n - 1
+    end
+end
+
 func vista_limpiar()
+    _vista_inicio.clear()
     vista_bloques = []
     vista_lineas = []
     vista_primera = 0
@@ -505,6 +530,7 @@ func _partir_codigo(quien: Int, p: Parrafo, ancho: Int)
 end
 
 func _maquetar(b: Bloque, ancho: Int)
+    _vista_inicio.push(vista_lineas.length)
     if vista_lineas.length > 0
         var vacia: [Palabra] = []
         _linea(0, P_VACIO, vacia, 0, "")
@@ -638,6 +664,7 @@ func vista_dibujar(x: Int, y: Int, ancho: Int, alto: Int)
     disp = ancho - 2 * MARGEN
     if disp != vista_ancho_maquetado
         # (vista_responder también pide partirlo todo otra vez)
+        _vista_inicio.clear()
         vista_lineas = []
         vista_maquetados = 0
         vista_ancho_maquetado = disp

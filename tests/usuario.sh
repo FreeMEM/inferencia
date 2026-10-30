@@ -7,6 +7,7 @@
 #   PERMISO=Si tests/usuario.sh ...   # Inferencia contesta sola a los permisos (Si, No o Siempre)
 #   FORJA=~/Projects/forja tests/usuario.sh ...   # con Forja abierta a la vez (DH0:Prueba/juego)
 #   SIN_PERMISO="entorno,orden echo" tests/usuario.sh ...   # ENV:Inferencia/sin_permiso
+#   OPCIONES=--memcheck tests/usuario.sh ...   # Inferencia compilada con esas opciones de ./dash
 #   PROVEEDOR=anthropic URL=http://127.0.0.1:40900/v1/messages tests/usuario.sh ...   # otro proveedor
 set -e
 dash=$1; usuario=$2; shift 2
@@ -16,7 +17,7 @@ aqui=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 srv=""
 trap '[ -z "$srv" ] || kill $srv 2>/dev/null; rm -rf "$tmp"' EXIT
-"$dash/dash" "$aqui/src/main.dash" -o "$tmp/Inferencia"
+"$dash/dash" $OPCIONES "$aqui/src/main.dash" -o "$tmp/Inferencia"
 cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
 mkdir -p "$tmp/sys/Prueba"
 [ ! -d "$aqui/tests/prueba" ] || cp -r "$aqui/tests/prueba/." "$tmp/sys/Prueba/"

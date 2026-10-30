@@ -54,11 +54,12 @@ Escrito en Dash 2.0 (dashc) y con licencia MIT, como Dash y Tachyon:
   - Las respuestas llegan en Markdown y se pasan a negrita, listas y código en Topaz.
   - Los cambios se muestran con las líneas quitadas y las puestas en color.
   - Se aprovecha lo que ya hace Tachyon para maquetar texto.
-- Se escribe en un `mui_string` de una línea. Varias líneas, más adelante.
+- Se escribe en un campo de varias líneas (`mui_text_editor`): Return empieza otra línea y Amiga+Return manda.
 - Los permisos van en la propia conversación, con "Sí", "No" y "Siempre". Así se ve la orden o el cambio
   completo antes de aceptar.
-- Para que no se congele, la petición avanza por trozos (`http_avanzar` con
-  `mui_wait_event_signals(net_signal())`), como en Tachyon. "Parar" la corta.
+- Para que no se congele, la petición avanza por trozos (`http_avanzar` con `mui_wait_event_signals`), como en
+  Tachyon. "Parar" la corta. Con el formato de OpenAI la respuesta llega según se escribe (`"stream": true`,
+  eventos SSE leídos con `http_flujo_leer`) y se va enseñando.
 - En el menú están el proveedor, la clave y el modelo, guardar y cargar la conversación, empezar de cero y
   el directorio de trabajo.
 

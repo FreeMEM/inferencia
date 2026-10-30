@@ -40,9 +40,14 @@
           {
             "type": "hgroup",
             "children": [
-              { "type": "string", "name": "entrada", "text": "", "max": 4000, "ack": 1, "weight": 400 },
-              { "type": "button", "name": "enviar", "label": "_Enviar", "event": 1 },
-              { "type": "button", "name": "parar", "label": "_Parar", "event": 2, "disabled": true }
+              { "type": "text_editor", "name": "entrada", "lines": 3, "ack": 1, "weight": 400 },
+              {
+                "type": "vgroup",
+                "children": [
+                  { "type": "button", "name": "enviar", "label": "_Enviar", "event": 1, "help": "Amiga+Return en el texto también lo manda" },
+                  { "type": "button", "name": "parar", "label": "_Parar", "event": 2, "disabled": true }
+                ]
+              }
             ]
           }
         ]

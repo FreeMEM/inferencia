@@ -3,6 +3,8 @@
 de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 
 - En /v1/messages habla el formato de Anthropic Messages (lo traduce y usa lo mismo); en /ollama/... no pide clave.
+- Con "stream": true (formato de OpenAI), la respuesta va en eventos SSE, en trozos chunked con pausas; si la
+  pregunta lleva "LENTO", con pausas largas (para ver en una captura cómo llega).
 - Si el mensaje de sistema empieza por "Resume", contesta con un resumen fijo.
 - Sin herramientas en la petición: repite la pregunta. Si la pregunta empieza por "MARKDOWN", contesta con un
   texto de ejemplo en Markdown (para probar cómo se ve).
@@ -18,6 +20,7 @@ de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 import json
 import os
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -86,6 +89,9 @@ def openai_a_anthropic(d):
 
 
 class Falso(BaseHTTPRequestHandler):
+    # (HTTP/1.1, para mandar el streaming con chunked, como OpenRouter)
+    protocol_version = "HTTP/1.1"
+
     def do_POST(self):
         cuerpo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
         # /v1/messages: Anthropic (x-api-key y anthropic-version); /ollama/...: sin clave, como Ollama en casa
@@ -99,8 +105,10 @@ class Falso(BaseHTTPRequestHandler):
             return
         try:
             peticion = json.loads(cuerpo)
+            self.flujo = bool(peticion.get("stream")) and not self.anthropic
             if self.anthropic:
                 peticion = anthropic_a_openai(peticion)
+            self.lento = "LENTO" in str(peticion["messages"][-1].get("content", ""))
             ultimo = peticion["messages"][-1]
             pregunta = ultimo["content"]
         except (ValueError, KeyError, IndexError) as e:
@@ -183,6 +191,9 @@ class Falso(BaseHTTPRequestHandler):
         })
 
     def _contestar(self, estado, datos):
+        if getattr(self, "flujo", False) and estado == 200:
+            self._contestar_flujo(datos)
+            return
         if getattr(self, "anthropic", False):
             if estado == 200:
                 datos = openai_a_anthropic(datos)
@@ -194,6 +205,47 @@ class Falso(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(cuerpo)))
         self.end_headers()
         self.wfile.write(cuerpo)
+
+    def _contestar_flujo(self, datos):
+        """La respuesta en eventos SSE, en trozos chunked con pausas (más largas si la pregunta lleva LENTO)"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+        pausa = 0.3 if getattr(self, "lento", False) else 0.02
+
+        def trozo(texto):
+            b = texto.encode("utf-8")
+            self.wfile.write(f"{len(b):x}\r\n".encode() + b + b"\r\n")
+            self.wfile.flush()
+            time.sleep(pausa)
+
+        def evento(delta, fin=None, uso=None):
+            d = {"id": "gen-falso", "model": datos["model"],
+                 "choices": [{"index": 0, "delta": delta, "finish_reason": fin}]}
+            if uso:
+                d["usage"] = uso
+            linea = "data: " + json.dumps(d, ensure_ascii=False) + "\n\n"
+            # a veces un evento cortado en dos trozos, como pasa de verdad
+            mitad = len(linea) // 2
+            trozo(linea[:mitad])
+            trozo(linea[mitad:])
+
+        trozo(": OPENROUTER PROCESSING\n\n")
+        m = datos["choices"][0]["message"]
+        contenido = m.get("content") or ""
+        for i in range(0, len(contenido), 12):
+            evento({"role": "assistant", "content": contenido[i:i + 12]})
+        for k, tc in enumerate(m.get("tool_calls") or []):
+            evento({"tool_calls": [{"index": k, "id": tc["id"], "type": "function",
+                                    "function": {"name": tc["function"]["name"], "arguments": ""}}]})
+            args = tc["function"]["arguments"]
+            for i in range(0, len(args), 10):
+                evento({"tool_calls": [{"index": k, "function": {"arguments": args[i:i + 10]}}]})
+        evento({}, datos["choices"][0]["finish_reason"], datos["usage"])
+        trozo("data: [DONE]\n\n")
+        self.wfile.write(b"0\r\n\r\n")
+        self.wfile.flush()
 
     def log_message(self, formato, *args):
         sys.stderr.write("falso: " + formato % args + "\n")

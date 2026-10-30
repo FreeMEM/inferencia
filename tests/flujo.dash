@@ -1,0 +1,45 @@
+# La respuesta según llega: una respuesta larga y lenta del servidor falso ("MARKDOWN LENTO"); a medias, Inferencia
+# sigue pidiendo y ya enseña parte; al acabar, RESPUESTA la tiene entera. Por ARexx (y capturas a medias).
+
+func anotar(texto: String)
+    t = file_read_text("DH0:Prueba/usuario.txt")
+    if t == nil
+        t = ""
+    end
+    file_write_text("DH0:Prueba/usuario.txt", t + texto + "\n")
+end
+
+Main
+    n = 0
+    while n < 600 and rexx_send("INFERENCIA.1", "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    fallos = 0
+    rexx_send("INFERENCIA.1", "PREGUNTA MARKDOWN LENTO")
+    time_delay(250)
+    e = rexx_send("INFERENCIA.1", "ESTADO")
+    if e == "pidiendo"
+        anotar("bien: a los 5 s sigue llegando")
+    else
+        anotar("FALLO: a los 5 s está en " + e)
+        fallos = fallos + 1
+    end
+    n = 0
+    while n < 900 and rexx_send("INFERENCIA.1", "ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    r = rexx_send("INFERENCIA.1", "RESPUESTA")
+    if str_contains(r, "## Pasos") and str_ends(r, "PLAN.md")
+        anotar("bien: la respuesta entera")
+    else
+        anotar("FALLO: la respuesta: [" + r + "]")
+        fallos = fallos + 1
+    end
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+    time_delay(100)
+    rexx_send("INFERENCIA.1", "QUIT")
+end
