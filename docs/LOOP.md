@@ -307,3 +307,8 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBLICAR.md.
 - 2026-10-30, después del bucle: pieza 23 arreglada en Dash (6df8f2d, en dash1 y dashc); quitado el rodeo de
   flujo_anadir. tests/flujo.dash con --memcheck: "TODO BIEN", 0 errores y 0 vivos.
+
+- 2026-10-30, a petición: la ventana de Inferencia con el tema oscuro de Forja (fondo de la ventana, etiquetas,
+  botones y la vista de la conversación). Probado con `tests/ventana.sh` en 3.1 (4 colores) y con `RTG=1` (nuevo:
+  3.2 con 256 colores). El cuadro de escribir y los campos de texto siguen claros, como en Forja: sus colores son
+  las prefs de MUI.

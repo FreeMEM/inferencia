@@ -6,6 +6,7 @@
       "tr": 200, "title": "Inferencia",
       "id": 1,
       "size": [60, 70],
+      "background": [20, 20, 24],
       "menus": [
         {
           "tr": 201, "title": "Proyecto",
@@ -25,9 +26,9 @@
           {
             "type": "hgroup",
             "children": [
-              { "type": "label", "tr": 207, "text": "Modelo:" },
+              { "type": "label", "tr": 207, "text": "Modelo:", "color": [220, 220, 210] },
               { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 180 },
-              { "type": "text", "name": "estado", "text": "", "weight": 320 }
+              { "type": "text", "name": "estado", "text": "", "weight": 320, "color": [220, 220, 210] }
             ]
           },
           {
@@ -44,8 +45,8 @@
               {
                 "type": "vgroup",
                 "children": [
-                  { "type": "button", "name": "enviar", "tr": {"label": 208, "help": 209}, "label": "_Enviar", "event": 1, "help": "Amiga+Return en el texto también lo manda" },
-                  { "type": "button", "name": "parar", "tr": 210, "label": "_Parar", "event": 2, "disabled": true }
+                  { "type": "button", "name": "enviar", "tr": {"label": 208, "help": 209}, "label": "_Enviar", "event": 1, "help": "Amiga+Return en el texto también lo manda", "background": [44, 44, 52], "color": [220, 220, 210] },
+                  { "type": "button", "name": "parar", "tr": 210, "label": "_Parar", "event": 2, "disabled": true, "background": [44, 44, 52], "color": [220, 220, 210] }
                 ]
               }
             ]
@@ -58,6 +59,7 @@
       "tr": 211, "title": "Inferencia: preferencias",
       "id": 2,
       "close": 42,
+      "background": [20, 20, 24],
       "root": {
         "type": "vgroup",
         "children": [
@@ -65,26 +67,26 @@
             "type": "columns",
             "columns": 2,
             "children": [
-              { "type": "label", "tr": 212, "text": "Proveedor:" },
+              { "type": "label", "tr": 212, "text": "Proveedor:", "color": [220, 220, 210] },
               { "type": "cycle", "name": "proveedor", "tr": 213, "options": "OpenRouter|Anthropic|OpenAI y compatibles", "change": 43 },
-              { "type": "label", "tr": 214, "text": "Dirección:" },
+              { "type": "label", "tr": 214, "text": "Dirección:", "color": [220, 220, 210] },
               { "type": "string", "name": "url", "text": "", "max": 300 },
-              { "type": "label", "tr": 215, "text": "Clave nueva:" },
+              { "type": "label", "tr": 215, "text": "Clave nueva:", "color": [220, 220, 210] },
               { "type": "string", "name": "clave", "text": "", "max": 300 },
-              { "type": "label", "tr": 216, "text": "Modelo:" },
+              { "type": "label", "tr": 216, "text": "Modelo:", "color": [220, 220, 210] },
               { "type": "string", "name": "modelo", "text": "", "max": 200 },
-              { "type": "label", "tr": 217, "text": "Tope:" },
+              { "type": "label", "tr": 217, "text": "Tope:", "color": [220, 220, 210] },
               { "type": "string", "name": "tope", "text": "", "max": 10 }
             ]
           },
-          { "type": "text", "name": "nota", "tr": 218, "text": "Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir." },
+          { "type": "text", "name": "nota", "tr": 218, "text": "Sin clave nueva, se queda la de ahora.\nTope: caracteres antes de resumir.", "color": [220, 220, 210] },
           {
             "type": "hgroup",
             "children": [
-              { "type": "button", "name": "guardar", "tr": 219, "label": "_Guardar", "event": 40 },
-              { "type": "button", "name": "usar", "tr": 220, "label": "_Usar", "event": 41 },
+              { "type": "button", "name": "guardar", "tr": 219, "label": "_Guardar", "event": 40, "background": [44, 44, 52], "color": [220, 220, 210] },
+              { "type": "button", "name": "usar", "tr": 220, "label": "_Usar", "event": 41, "background": [44, 44, 52], "color": [220, 220, 210] },
               { "type": "space" },
-              { "type": "button", "name": "cancelar", "tr": 221, "label": "_Cancelar", "event": 42 }
+              { "type": "button", "name": "cancelar", "tr": 221, "label": "_Cancelar", "event": 42, "background": [44, 44, 52], "color": [220, 220, 210] }
             ]
           }
         ]

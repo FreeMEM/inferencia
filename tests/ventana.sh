@@ -5,6 +5,7 @@
 #   LINEA=0 tests/ventana.sh ...     # la vista sube a esa línea después de la respuesta
 #   PERMISO=Si tests/ventana.sh ...  # contesta solo a los permisos (Si, No o Siempre), a los tres segundos
 #   TIEMPO=s tests/ventana.sh ...    # el tope del emulador (150 s por defecto)
+#   RTG=1 tests/ventana.sh ...       # en AmigaOS 3.2 con tarjeta gráfica de 256 colores (sys32rtg8): se ven los colores
 #   CATALOGOS=1 tests/ventana.sh ...   # con build/Catalogs (tools/paquete.py o catalogo.py): sale en inglés
 #   REAL=modelo tests/ventana.sh ... # contra OpenRouter de verdad, con la clave de ~/.config/inferencia/openrouter
 #
@@ -20,7 +21,15 @@ tmp=$(mktemp -d)
 srv=""
 trap '[ -z "$srv" ] || kill $srv 2>/dev/null; rm -rf "$tmp"' EXIT
 "$dash/dash" "$aqui/src/main.dash" -o "$tmp/Inferencia"
-cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
+maquina=""
+if [ -n "$RTG" ]; then
+  cp -r "$HOME/.cache/dash-emu/sys32rtg8" "$tmp/sys"
+  export DASH_EMU_SYS_32_RTG="$tmp/sys"
+  export DASH_KICKSTART_32="${DASH_KICKSTART_32:-$HOME/Descargas/Telegram Desktop/Kickstart v3.2.3 A1200.47.115_Pack_noSCSI.rom}"
+  maquina="--machine rtg"
+else
+  cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
+fi
 cpu=""
 echo "C:MakeDir ENV:Inferencia" >> "$tmp/sys/S/Startup-Extra"
 if [ -n "$REAL" ]; then
@@ -56,4 +65,4 @@ if [ -z "$REAL" ]; then
 fi
 shots=""
 for s in "$@"; do shots="$shots --screenshot $s ${png%.png}-$s.png"; done
-python3 "$dash/tools/emu_run.py" --timeout ${TIEMPO:-150} --system "$tmp/sys" --set bsdsocket_library=1 $cpu $shots "$tmp/Inferencia"
+python3 "$dash/tools/emu_run.py" --timeout ${TIEMPO:-150} --system "$tmp/sys" --set bsdsocket_library=1 $maquina $cpu $shots "$tmp/Inferencia"
