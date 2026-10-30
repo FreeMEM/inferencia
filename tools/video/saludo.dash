@@ -1,0 +1,21 @@
+# Saluda por el nombre. La ventana sale de saludo.dashui, hecha en el editor de ventanas de Forja.
+import "saludo.dashui"
+
+Main
+    if mui_app_begin("Saludo", "SALUDO") == 0
+        Print "No se puede usar MUI"
+    else
+        v = Saludo_create()
+        mui_window_open(v.window)
+        while true
+            ev = mui_wait_event()
+            if ev == -1 or ev == 99
+                break
+            end
+            if ev == 1
+                mui_set_text(v.mensaje, "Hola, " + mui_get_text(v.nombre) + "!")
+            end
+        end
+        mui_app_end()
+    end
+end

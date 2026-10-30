@@ -19,7 +19,7 @@ cp "$K"/x/C/* "$V/sys/C/"; cp "$K"/x/Libs/* "$V/sys/Libs/"; cp "$K"/x/Rexxc/* "$
 "$dash/dash" "$HOME/Projects/forja/src/main.dash" -o "$V/sys/Programas/Forja"
 cp "$dash/dashc/build/dashc.amiga" "$V/sys/Dash/dashc"
 cp "$dash"/dashc/build/dashc_*.drt "$V/sys/Dash/"
-cp "$(dirname "$0")/ejemplo_mui.dash" "$V/sys/Hola/"
+cp "$(dirname "$0")/ejemplo_mui.dash" "$(dirname "$0")/saludo.dash" "$(dirname "$0")/saludo.dashui" "$V/sys/Hola/"
 printf '# Hola mundo con MUI\n' > "$V/sys/Hola/hola.dash"
 mkdir -p "$V/sys/Encargos"
 iconv -f utf-8 -t latin1 "$(dirname "$0")/encargos/letras.txt" > "$V/sys/Encargos/letras.txt"

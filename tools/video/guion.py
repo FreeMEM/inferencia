@@ -1,7 +1,8 @@
-"""El guion del vídeo de Inferencia y Forja: un hola mundo MUI pedido a Inferencia y hecho en Forja, y el logo de
-Amiga en LightWave Modeler. Con el sistema del vídeo arrancado (preparar.sh y arrancar.sh) y el agente en marcha.
+"""El guion del vídeo de Inferencia y Forja: un hola mundo MUI pedido a Inferencia y hecho en Forja, el logo de
+Amiga en LightWave Modeler y el editor de ventanas .dashui de Forja. Con el sistema del vídeo arrancado (preparar.sh
+y arrancar.sh) y el agente en marcha.
 
-    python3 guion.py forja|lightwave <carpeta de la toma>
+    python3 guion.py forja|lightwave|dashui <carpeta de la toma>
 """
 import os
 import subprocess
@@ -20,6 +21,8 @@ from ventanas import colocar
 SYS = os.path.expanduser("~/.cache/video-inferencia/sys")
 RCOMMAND, LCOMMAND = 0x0080, 0x0040
 RETURN, TECLA_M = 0x44, 0x37
+DERECHA, RETROCESO = 0x4E, 0x41
+TECLA_P, TECLA_S, TECLA_D, TECLA_E = 0x19, 0x21, 0x22, 0x12
 
 
 def esperar_ventana(titulo, tope=60):
@@ -104,7 +107,7 @@ def preparar():
     p.mover_a(860, 40)
 
 
-for f in ("Hola/hola", "amiga.lwo", "amiga.rexx"):
+for f in ("Hola/hola", "Hola/saludo", "amiga.lwo", "amiga.rexx"):
     if os.path.exists(os.path.join(SYS, f)):
         os.remove(os.path.join(SYS, f))
 
@@ -112,12 +115,19 @@ escena = sys.argv[1]
 sys.argv = sys.argv[1:]
 if escena == "forja":
     preparar()
+elif escena == "dashui":
+    agente.lanzar("DH0:Programas/Forja DH0:Hola/saludo.dashui")
+    esperar_ventana("Forja"); time.sleep(3)
+    colocar("Forja", 0, 14, 700, 744)
+    p.mover_a(860, 40)
 else:
     agente.lanzar("DH0:Programas/Inferencia")
     esperar_ventana("Inferencia"); time.sleep(3)
     p.mover_a(860, 40)
 r = Rodaje(sys.argv[1])
 r.rapidos = []             # (t0, t1, veces): tramos que el montaje acelera
+r.rasgos = []              # (t, texto): la lista de la columna izquierda del montaje
+r.rasgo = lambda texto: r.rasgos.append((r.ahora(), texto))
 r.empezar()
 time.sleep(1.0)
 
@@ -151,11 +161,68 @@ if escena == "forja":
             p.mover_a(round(salir[0][1]), round(salir[0][2])); time.sleep(0.4); p.clic()
     time.sleep(3)
 
+elif escena == "dashui":
+    # --- 3. El editor de ventanas ---
+    r.capitulo("3 - Ventanas .dashui", "El editor de ventanas de Forja, con MUI de verdad")
+    r.rasgo("Abrir un .dashui")
+    r.decir("Las ventanas MUI de Dash se dibujan en ficheros .dashui. Forja los abre en su editor de ventanas.")
+    time.sleep(5)
+    r.decir("A la izquierda, el árbol de objetos. A la derecha, las propiedades del elegido.")
+    r.marcar("arbol", 184, 76, 216, 128, 4)
+    time.sleep(5)
+    r.rasgo("Vista previa con MUI")
+    r.decir("Amiga+P: la vista previa. No es un dibujo: es la ventana hecha con MUI.")
+    p.mover_a(300, 400); time.sleep(0.5)
+    agente.tecla(TECLA_P, RCOMMAND)
+    time.sleep(5)
+    r.rasgo("Cambios en vivo")
+    r.decir("Elijo el botón Saludar y le cambio el texto. La vista previa cambia sola.")
+    p.mover_a(268, 181); time.sleep(0.5); p.clic(); time.sleep(1.2)
+    agente.tecla(DERECHA, 0); time.sleep(0.6); agente.tecla(RETURN, 0); time.sleep(0.6)
+    for i in range(8):
+        agente.tecla(RETROCESO, 0); time.sleep(0.12)
+    agente.escribir("_Di hola"); time.sleep(0.8)
+    agente.tecla(RETURN, 0)
+    time.sleep(2)
+    vp = amiga.ventana("Saludo")
+    if vp:
+        r.marcar("vista", vp[2], vp[3], vp[4], vp[5], 3)
+    time.sleep(4)
+    if vp:
+        p.mover_a(vp[2] + 7, vp[3] + 4); time.sleep(0.4); p.clic(); time.sleep(1.5)
+    r.rasgo("Guardar y ver el JSON")
+    r.decir("Amiga+S guarda. Amiga+D enseña el fichero tal cual: JSON.")
+    p.mover_a(300, 400); time.sleep(0.4); p.clic(); time.sleep(0.6)
+    agente.tecla(TECLA_S, RCOMMAND); time.sleep(1.5)
+    agente.tecla(TECLA_D, RCOMMAND)
+    time.sleep(6)
+    r.rasgo("El programa que la usa")
+    r.decir("El programa importa el .dashui y usa sus objetos por nombre: v.mensaje, v.nombre...")
+    p.mover_a(50, 124); time.sleep(0.5); p.clic(); time.sleep(1.5)
+    r.acercar(180, 60, 500, 400, 6)
+    time.sleep(7)
+    r.rasgo("Compilar y ejecutar")
+    r.decir("Amiga+E: Forja lo compila con dashc, en el Amiga, y lo ejecuta.")
+    p.mover_a(400, 400); time.sleep(0.4)
+    agente.tecla(TECLA_E, RCOMMAND)
+    esperar_ventana("Saludo", 120)
+    time.sleep(2)
+    r.rasgo("Probar la ventana")
+    r.decir("Y ahí está, con el botón nuevo.")
+    _, _, x, y, w, h = amiga.ventana("Saludo")
+    p.mover_a(x + w - 50, y + 38); time.sleep(0.5); p.clic(); time.sleep(0.5)
+    agente.escribir("Amiga"); time.sleep(1)
+    p.mover_a(x + 45, y + 58); time.sleep(0.5); p.clic()
+    time.sleep(4)
+    p.mover_a(x + w - 45, y + 58); time.sleep(0.5); p.clic()
+    time.sleep(2)
+    ok = amiga.ventana("Saludo") is None
+
 else:
     v = esperar_ventana("Inferencia")
     # --- 2. LightWave ---
     r.capitulo("2 - LightWave", "Inferencia maneja otros programas por ARexx")
-    r.decir("LightWave Modeler, de 1995, se maneja con guiones ARexx.")
+    r.decir("LightWave Modeler 5, de 1996, se maneja con guiones ARexx.")
     agente.lanzar("SYS:LightWave/Modeler.FP")
     time.sleep(25)
     r.decir("Vuelvo al Workbench con Amiga+M.")
@@ -177,5 +244,6 @@ import json
 fj = os.path.join(sys.argv[1], "toma.json")
 toma = json.load(open(fj))
 toma["rapidos"] = r.rapidos
+toma["rasgos"] = r.rasgos
 json.dump(toma, open(fj, "w"), ensure_ascii=False, indent=1)
-print("hecho:", escena, ok if escena == "forja" else ok2)
+print("hecho:", escena, ok2 if escena == "lightwave" else ok)

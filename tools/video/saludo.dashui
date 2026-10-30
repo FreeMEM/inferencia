@@ -1,0 +1,31 @@
+{
+  "dashui": 1,
+  "windows": [
+    {
+      "name": "Saludo",
+      "title": "Saludo",
+      "id": 1,
+      "close": 99,
+      "root": {
+        "type": "vgroup",
+        "children": [
+          { "type": "text", "name": "mensaje", "text": "Escribe tu nombre" },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "label", "text": "Nombre:" },
+              { "type": "string", "name": "nombre", "text": "", "max": 40, "ack": 1 }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "button", "name": "saludar", "label": "_Saludar", "event": 1 },
+              { "type": "button", "name": "salir", "label": "Sa_lir", "event": 99 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
