@@ -317,3 +317,6 @@ Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBL
   intentó), así que negro del todo no: gris donde el texto negro se lee. Con 4 colores MUI los pone azules. El
   editor de ventanas de Forja deja editar `field_colors` y no lo aplica en la vista previa (cambiaría Forja).
   Probado: ventana.sh en 3.1 y RTG, Forja ventana.sh RTG, diseno.sh y buscar.sh (TODO BIEN).
+- 2026-10-30: pieza 24 cerrada. Con Dash 2e972f6, Forja redibujando dentro de la orden ARexx (sin
+  `redibujar_luego`) pasa rexx.sh y buscar.sh 4 veces cada una, y teclas.sh y diseno.sh. Probablemente era la
+  pieza 23 (el temporal del RESULT liberado antes de tiempo); no se probó con el Dash viejo para confirmarlo.
