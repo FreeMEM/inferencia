@@ -5,8 +5,8 @@
     python3 tools/catalogos.py [DASH_DIR] ct        # pone al día catalogos/english.ct (guarda lo traducido)
     python3 tools/catalogos.py [DASH_DIR] catalog   # build/Catalogs/english/Inferencia.catalog
 
-DASH_DIR: la carpeta de Dash (por defecto ~/Projects/FreeMEMLang). catalogo.py sigue los import junto al fichero y
-no encuentra los de lib/ de Dash: aquí se saltan (los textos de lib/ no van en este catálogo).
+DASH_DIR: la carpeta de Dash (por defecto ~/Projects/FreeMEMLang). Los textos de lib/ que se usan (los errores de
+red de lib/red, números 400 a 442) también van en el catálogo: el programa no usa esos números.
 """
 import sys
 from pathlib import Path
@@ -17,16 +17,10 @@ dash = Path(args.pop(0)) if args and args[0] not in ("cd", "ct", "catalog") else
 orden = args[0] if args else "catalog"
 sys.path.insert(0, str(dash / "tools"))
 sys.path.insert(0, str(dash))
+import os   # noqa: E402
+os.environ["DASH_HOME"] = str(dash)
 import catalogo   # noqa: E402
 
-_leer = Path.read_text
-
-
-def _leer_o_nada(self, *a, **k):
-    return _leer(self, *a, **k) if self.exists() else ""
-
-
-Path.read_text = _leer_o_nada
 cd = raiz / "catalogos/Inferencia.cd"
 ct = raiz / "catalogos/english.ct"
 if orden == "cd":

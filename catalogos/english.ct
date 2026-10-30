@@ -209,3 +209,105 @@ _Use
 MSG_221
 _Cancel
 ; _Cancelar
+MSG_400
+
+; too many redirects
+MSG_401
+
+; the server closed without answering
+MSG_402
+
+; an answer that isn't HTTP
+MSG_403
+
+; broken status line
+MSG_404
+
+; cut headers
+MSG_405
+
+; cut body
+MSG_406
+
+; could not decompress
+MSG_407
+
+; timed out
+MSG_408
+
+; cancelled
+MSG_409
+
+; unsupported scheme: %1
+MSG_410
+
+; can't write %1
+MSG_420
+
+; too many connections
+MSG_421
+
+; connection closed
+MSG_422
+
+; out of memory
+MSG_423
+
+; can't send
+MSG_424
+
+; network closed
+MSG_425
+
+; connection refused
+MSG_426
+
+; too many connections at once
+MSG_427
+
+; too many TLS connections
+MSG_428
+
+; error sending
+MSG_429
+
+; error receiving
+MSG_430
+
+; network error
+MSG_431
+
+; TLS error
+MSG_432
+
+; the network belongs to another task
+MSG_433
+
+; AmiSSL is missing (amisslmaster.library)
+MSG_434
+
+; no bsdsocket.library (a TCP/IP stack is missing)
+MSG_435
+
+; server not found
+MSG_436
+
+; can't open AmiSSL (5.1 or later is needed)
+MSG_437
+
+; can't open a socket
+MSG_438
+
+; can't look up the server
+MSG_439
+
+; timed out connecting
+MSG_440
+
+; timed out negotiating TLS
+MSG_441
+
+; timed out looking up the server
+MSG_442
+
+; can't write the file

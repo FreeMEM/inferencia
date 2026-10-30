@@ -1,4 +1,4 @@
-; Texts of src/main.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/inferencia/src/main.dash (tools/catalogo.py)
 ;
 MSG_1 (1//)
 Pensando...
@@ -138,3 +138,71 @@ MSG_220 (220//)
 _Usar
 MSG_221 (221//)
 _Cancelar
+MSG_400 (400//)
+too many redirects
+MSG_401 (401//)
+the server closed without answering
+MSG_402 (402//)
+an answer that isn't HTTP
+MSG_403 (403//)
+broken status line
+MSG_404 (404//)
+cut headers
+MSG_405 (405//)
+cut body
+MSG_406 (406//)
+could not decompress
+MSG_407 (407//)
+timed out
+MSG_408 (408//)
+cancelled
+MSG_409 (409//)
+unsupported scheme: %1
+MSG_410 (410//)
+can't write %1
+MSG_420 (420//)
+too many connections
+MSG_421 (421//)
+connection closed
+MSG_422 (422//)
+out of memory
+MSG_423 (423//)
+can't send
+MSG_424 (424//)
+network closed
+MSG_425 (425//)
+connection refused
+MSG_426 (426//)
+too many connections at once
+MSG_427 (427//)
+too many TLS connections
+MSG_428 (428//)
+error sending
+MSG_429 (429//)
+error receiving
+MSG_430 (430//)
+network error
+MSG_431 (431//)
+TLS error
+MSG_432 (432//)
+the network belongs to another task
+MSG_433 (433//)
+AmiSSL is missing (amisslmaster.library)
+MSG_434 (434//)
+no bsdsocket.library (a TCP/IP stack is missing)
+MSG_435 (435//)
+server not found
+MSG_436 (436//)
+can't open AmiSSL (5.1 or later is needed)
+MSG_437 (437//)
+can't open a socket
+MSG_438 (438//)
+can't look up the server
+MSG_439 (439//)
+timed out connecting
+MSG_440 (440//)
+timed out negotiating TLS
+MSG_441 (441//)
+timed out looking up the server
+MSG_442 (442//)
+can't write the file
