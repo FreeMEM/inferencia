@@ -75,7 +75,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Estructura del repo y `src/main.dash`.
   - Preferencias MUI propias con tema oscuro.
   - Disposición: proyecto, pestañas, salida y botones.
-- [ ] F1b Tema oscuro también en lo de MUI (botones, bordes de los grupos), cuando dashc entregue
+- [x] F1b Tema oscuro también en lo de MUI (botones, bordes de los grupos), cuando dashc entregue
   `mui_set_background` (pieza 11, pedida el 2026-10-30).
 - [x] F2 Editor de código en canvas:
   - Texto por líneas, cursor y teclado (con la tabla de teclas).
@@ -183,3 +183,6 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   dashc entregó la pieza 11 (`mui_set_background`, `mui_set_text_pen`, "background" y "color" en .dashui) y
   confirmó que `input_menu` no puede ir con MUI 5 (menús propios, sin tira de Intuition): Amiga + tecla es el
   camino.
+- 2026-10-30, F1b: "background" en la ventana y "background" y "color" en los botones (pieza 11 de dashc).
+  Captura en FS-UAE: todo negro con texto claro, también con los 4 colores del Workbench; la barra de
+  desplazamiento sigue gris (no es de los objetos que admite).
