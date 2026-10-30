@@ -109,7 +109,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Vista previa real con `lib/dashui.dash`.
   - Propiedades.
   - Guardar el JSON igual que la extensión de VS Code.
-- [ ] F8 Depurador (`dbg_*`):
+- [x] F8 Depurador (`dbg_*`):
   - Puntos de parada en el margen.
   - Seguir, paso, entrar y salir.
   - Variables, pila y la línea actual resaltada.
@@ -234,3 +234,12 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   la fila elegida. `tests/diseno.sh` en FS-UAE: "TODO BIEN" dos de tres veces; la otra, Return se perdió, creo que
   porque la vista previa rehecha se quedó el teclado (lo arregla la pieza 16). La sonda dice también el estado del
   editor de ventanas (ENV:FORJA_DISENO).
+- 2026-10-30, F8: depurar (Amiga-G o F5) compila con `dashc --debug` y lanza con `dbg_start`; puntos de parada con F9
+  o un clic en el margen (un cuadrado rojo; se ponen también con el programa en marcha); Seguir F5, Paso F10,
+  Entrar F6, Salir F7 y Parar, en botones que sustituyen a los de siempre mientras se depura; la línea parada con
+  fondo y una flecha en el margen; el panel de la izquierda enseña la pila, las variables y las globales
+  (`dbg_value`); la salida del programa (`dbg_output`) va a la salida. La espera, con `dbg_signal()` en
+  `mui_wait_event_signals` y un tic de respaldo. `tests/depurar.sh` en FS-UAE: "TODO BIEN" tres veces (antes, la
+  prueba leía ENV: mientras Forja lo escribía). Pieza 16 de dashc (`mui_window_open_back`): la vista previa rehecha
+  ya no se queda el teclado; `diseno.sh` pasa dos de dos. dashc midió rehacer la vista: 0,9 s (json_parse en Dash
+  y MUI calculando la ventana).
