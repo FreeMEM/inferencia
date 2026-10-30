@@ -104,7 +104,8 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
 
 ### El resto
 
-- [ ] F7 Editor de `.dashui`:
+- [ ] F7 Editor de `.dashui` (F7a hecha: árbol, propiedades, vista previa, guardar; falta F7b: añadir, quitar y
+  mover objetos, y los menús):
   - Árbol de objetos.
   - Vista previa real con `lib/dashui.dash`.
   - Propiedades.
@@ -220,3 +221,11 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   deshacer). Pruebas en FS-UAE, "TODO BIEN": `tests/juntos.dash` (los dos programas a la vez) y
   `forja/tests/rexx.dash`. Pieza 14 de dashc (b440e6b): un RESULT vacío llegaba como el de la orden anterior;
   arreglado, y la prueba vuelve a exigir "".
+- 2026-10-30, F7a: `src/diseno.dash`: un .dashui se abre en el editor de ventanas (Amiga-D cambia a texto): el
+  árbol de objetos y las propiedades del elegido (las de su tipo y las comunes), editables en el sitio, con
+  comprobación de números, true/false, listas y nombres. Lo cambiado pasa al texto con json_pretty (como la
+  extensión de VS Code) y se deshace en un paso (cambios "juntos" en el deshacer). Vista previa (Amiga-P): la ventana
+  MUI de verdad con lib/dashui.dash, sin eventos ni atajos ni id (no deben llegar a Forja), rehecha con cada
+  cambio; la anterior se destruye con `mui_window_dispose` (pieza 15). `tests/diseno.sh` en FS-UAE: "TODO BIEN";
+  `teclas.sh` sigue bien. Rehacer la vista tarda más de 2 s con la CPU al máximo: por medir. El teclado vuelve a
+  Forja buscándola por título (rodeo); pedida la pieza 16 (activar ventanas MUI).
