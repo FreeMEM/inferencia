@@ -82,7 +82,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Selección con ratón y teclado, desplazamiento, deshacer y rehacer.
   - Portapapeles.
 - [x] F3 Colores de la sintaxis de Dash y números de línea. Rápido en un 68020.
-- [ ] F4 Ficheros:
+- [x] F4 Ficheros:
   - Pestañas.
   - Abrir y guardar con petición de fichero.
   - Panel del proyecto, con la lista del cajón.
@@ -192,3 +192,9 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   FS-UAE con la CPU a la velocidad de un A1200: un dibujo entero de unas 20 líneas, 38 ms (con la CPU al máximo,
   45: lo marca el blitter). `tests/teclas.sh` sigue en "TODO BIEN". Captura en 256 colores con `RTG=1`
   (AmigaOS 3.2, `sys32rtg8`): los colores bien. Con 4 colores casi todo sale blanco.
+- 2026-10-30, F4: pestañas con clic, Nuevo, Abrir y Guardar como con el diálogo ASL, Guardar (en UTF-8 si
+  el fichero venía así), Cerrar pestaña; el panel del proyecto abre ficheros con un clic y entra en cajones
+  ("/ (arriba)" para subir). Cerrar o salir con cambios sin guardar avisa en la salida y pide la orden otra
+  vez: Dash no tiene una petición de confirmación, pedida a dashc (`mui_request`, pieza 12); cuando llegue, se
+  cambia. `tests/ficheros.sh` en FS-UAE: "TODO BIEN" (abrir desde el proyecto, pestañas, guardar, UTF-8, aviso y
+  cierre). `tests/teclas.sh` sigue bien. Los diálogos ASL no se prueban solos.
