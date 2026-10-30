@@ -12,9 +12,9 @@ Inferencia y Forja funcionan en FS-UAE con todas sus pruebas. Publicarlas lo dec
    lib/red (en inglés de origen) tengan versión en castellano: hoy salen en inglés en los dos idiomas.
 4. **Probar con la API de verdad lo que cuesta dinero**: Anthropic directo y el coste que da OpenRouter con un
    modelo de pago. Anthropic aún no va en streaming.
-5. **Fallos de Dash pendientes**, rodeados en el código: un temporal pasado a una función se libera antes de
-   tiempo (pieza 23) y, en Forja, una orden ARexx que redibuja recibía el RESULT anterior (pieza 24, que dashc no
-   reproduce: quizá el `env_set` de la sonda tarda y el cliente se cansa de esperar).
+5. **Un fallo de Dash pendiente**, rodeado en Forja: una orden ARexx que redibuja recibía el RESULT anterior
+   (pieza 24, que dashc no reproduce: quizá el `env_set` de la sonda tarda y el cliente se cansa de esperar). El
+   temporal liberado antes de tiempo (pieza 23) ya está arreglado en Dash (6df8f2d).
 6. **Aminet**: un `.readme` con su formato (Short, Author, Type, Version, Requires...) para cada `.lha`, y capturas.
 7. **Opcional**: iconos con más colores (NewIcons o los de 3.5+), y un instalador con Installer como el de Trasfondo.
 

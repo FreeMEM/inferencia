@@ -351,9 +351,7 @@ func flujo_anadir(f: Flujo, trozo: String)
         linea = f.pendiente[0:p]
         f.pendiente = f.pendiente[p + 1:]
         if str_starts(linea, "data: ") and linea != "data: [DONE]"
-            # (en una variable: pasado como temporal, json_path lo liberaba al reasignar su parámetro; pieza 23)
-            ev = json_parse(linea[6:])
-            _flujo_evento(f, ev)
+            _flujo_evento(f, json_parse(linea[6:]))
         end
         p = str_find(f.pendiente, "\n")
     end

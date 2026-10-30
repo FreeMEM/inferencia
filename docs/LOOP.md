@@ -305,3 +305,5 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   (inferencia-0.1.lha, forja-0.1.lha).
 
 Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBLICAR.md.
+- 2026-10-30, después del bucle: pieza 23 arreglada en Dash (6df8f2d, en dash1 y dashc); quitado el rodeo de
+  flujo_anadir. tests/flujo.dash con --memcheck: "TODO BIEN", 0 errores y 0 vivos.
