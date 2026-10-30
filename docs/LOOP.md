@@ -87,7 +87,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Abrir y guardar con petición de fichero.
   - Panel del proyecto, con la lista del cajón.
   - Aviso al cerrar sin guardar.
-- [ ] F5 Compilar y ejecutar:
+- [x] F5 Compilar y ejecutar:
   - dashc con `run_start`, sin bloquear.
   - Salida con los errores. Un clic salta a la línea.
   - Ejecutar el programa.
@@ -198,3 +198,12 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   vez: Dash no tiene una petición de confirmación, pedida a dashc (`mui_request`, pieza 12); cuando llegue, se
   cambia. `tests/ficheros.sh` en FS-UAE: "TODO BIEN" (abrir desde el proyecto, pestañas, guardar, UTF-8, aviso y
   cierre). `tests/teclas.sh` sigue bien. Los diálogos ASL no se prueban solos.
+- 2026-10-30, F5: Compilar (Amiga-K) y Ejecutar (Amiga-E) llaman a dashc con `run_start` sin parar la
+  ventana (ENV:Forja/dashc o "dashc"); guardan antes lo cambiado; los errores "fichero:línea:columna: Error:"
+  van a la salida en rojo y un clic lleva a su línea; Ejecutar pasa a Parar mientras corre el programa.
+  dashc para el Amiga: `make amiga` en una copia aparte de ide-piezas (no en la carpeta donde trabaja dashc).
+  Pieza 13 (dashc): en el Amiga una orden de System no tiene canal de errores; ahora dashc escribe sus errores
+  por stdout en Latin-1. Pieza 12 (`mui_request`): cerrar o salir con cambios pregunta Guardar, Descartar o
+  Cancelar. Pruebas en FS-UAE, todas "TODO BIEN": `compilar.sh` (compila en 1,4 s con la CPU al máximo, ejecuta
+  y escribe "Naves: 2", el clic en el error lleva a la línea 25), `ficheros.sh` (con la petición: la tecla hay
+  que pulsarla un momento después de que salga) y `teclas.sh`. Dos capturas salieron a medio dibujar.
