@@ -77,7 +77,7 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   - Disposición: proyecto, pestañas, salida y botones.
 - [ ] F1b Tema oscuro también en lo de MUI (botones, bordes de los grupos), cuando dashc entregue
   `mui_set_background` (pieza 11, pedida el 2026-10-30).
-- [ ] F2 Editor de código en canvas:
+- [x] F2 Editor de código en canvas:
   - Texto por líneas, cursor y teclado (con la tabla de teclas).
   - Selección con ratón y teclado, desplazamiento, deshacer y rehacer.
   - Portapapeles.
@@ -173,3 +173,13 @@ Un bucle hace las tareas en orden, una por vuelta. Cada tarea termina probada, c
   (los nueve no caben en 640 píxeles y MUI añadía una barra para desplazar la ventana). MUI no deja poner
   fondos desde Dash y unas prefs propias no se pueden escribir a mano: pedido a dashc `mui_set_background`
   (pieza 11); queda F1b.
+- 2026-10-30, F2: el editor de Forja escribe: cursor, flechas (Alt: línea y página; Ctrl: palabra y texto),
+  selección con Mayúsculas y con el ratón (clic, Mayúsculas + clic, arrastrar), sangría automática, Tab y
+  Mayúsculas + Tab, Retroceso hasta la parada de sangría, deshacer y rehacer (las letras seguidas van juntas),
+  cortar, copiar y pegar con el portapapeles del sistema, menú Edición, rueda y barra. El teclado va al editor
+  con el puntero encima (así lo da el lienzo); Amiga + letra sobre el editor se pasa a la opción del menú.
+  `tests/teclas.sh` lo prueba por input.device en FS-UAE: dos veces seguidas "TODO BIEN" (la primera vez, la
+  prueba leyó la sonda a medio escribir: ahora reintenta). La captura de la selección no salió a tiempo.
+  dashc entregó la pieza 11 (`mui_set_background`, `mui_set_text_pen`, "background" y "color" en .dashui) y
+  confirmó que `input_menu` no puede ir con MUI 5 (menús propios, sin tira de Intuition): Amiga + tecla es el
+  camino.
