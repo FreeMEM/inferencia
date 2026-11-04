@@ -32,6 +32,7 @@
 # desde la esquina de la ventana).
 
 @catalog "Inferencia.catalog" 1 "español"
+@version "Inferencia 0.1"
 
 import "config.dash"
 import "openrouter.dash"
