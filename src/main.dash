@@ -17,6 +17,8 @@
 # petición aparte de la conversación (RC 5 si ya hay otra); ENCARGADO dice "pidiendo", "listo" (con las herramientas
 # que usó en la línea siguiente y la respuesta debajo), "error" (con el motivo) o "nada"; CANCELAR la corta.
 #
+# Con el argumento DETRAS (el copiloto de Forja la arranca así), la ventana se abre detrás, sin el teclado.
+#
 # Preferencias (Amiga-P): proveedor, dirección, clave, modelo y tope; Usar las deja hasta reiniciar, Guardar también
 # en ENVARC:.
 #
@@ -833,8 +835,13 @@ Main
         else
             vista_anadir(QUIEN_AVISO, tr(35, "Escribe abajo y pulsa Return o Enviar. Proveedor y modelo: Amiga-P."))
         end
-        mui_window_open(v.window)
-        mui_set_active(v.window, v.entrada)
+        if arg_count() >= 1 and str_upper(arg(0)) == "DETRAS"
+            # (la arranca el copiloto de Forja: la ventana, detrás, sin quitarle el teclado a Forja)
+            mui_window_open_back(v.window)
+        else
+            mui_window_open(v.window)
+            mui_set_active(v.window, v.entrada)
+        end
         sonda = env_get("INFERENCIA_SONDA") != ""
         poner_estado(LIBRE)
         ajustar_barra()
