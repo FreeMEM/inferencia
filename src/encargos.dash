@@ -1,0 +1,161 @@
+# Los encargos de Forja: peticiones al modelo aparte de la conversación, para el copiloto de Forja (la extensión
+# Inferencia de Forja, extensiones/Inferencia de su repositorio). Forja manda el encargo entero (qué hacer y el código
+# que hace falta) y recoge la respuesta; Inferencia no la enseña ni la aplica: Forja enseña el cambio y el usuario lo
+# acepta o no.
+#
+#   encargo_empezar(tipo, texto, cfg)     # false si ya hay uno en marcha (salvo "completar", que se sustituye)
+#   encargo_avanzar(cfg)                  # en cada tic: true cuando acaba (listo o error)
+#   encargo_recoger()                     # "pidiendo", "listo\n<herramientas>\n<respuesta>", "error\n<motivo>" o "nada"
+#   encargo_cancelar()
+#
+# Un encargo puede usar las herramientas que solo leen (leer, listar, buscar y ayuda: la ayuda de Dash, para no
+# inventarse funciones), sin preguntar, hasta ENC_MAX_VUELTAS veces. "completar" (la sugerencia al escribir) va sin
+# herramientas y con una respuesta corta.
+
+import "openrouter.dash"
+import "herramientas.dash"
+
+const ENC_NADA = 0
+const ENC_PIDIENDO = 1
+const ENC_LISTO = 2
+const ENC_ERROR = 3
+const ENC_MAX_VUELTAS = 6
+const ENC_TOKENS_COMPLETAR = 80
+
+const SISTEMA_CODIGO = "Eres el copiloto de Forja, el editor de Dash en el Amiga. Dash es un lenguaje para AmigaOS que se compila: los bloques acaban en end (func, if, while, for, struct, Main), las condiciones van con and, or y not (nunca && ni ||), los comentarios empiezan por #, y el programa empieza en Main. Antes de usar una función de Dash de la que no estés seguro, búscala con la herramienta ayuda: no te inventes funciones ni argumentos. Puedes leer los ficheros del proyecto con leer, listar y buscar. Haz solo lo que se pide y contesta como se pide: el código, en un solo bloque ```dash."
+
+const SISTEMA_COMPLETAR = "Completas código de Dash (un lenguaje para AmigaOS: bloques que acaban en end, and/or/not) en el editor Forja, como un autocompletado. Contesta solo con el texto que va detrás del cursor hasta el final de esa línea, sin repetir lo que ya está escrito, sin comillas de código y sin explicar nada. Si no sabes qué va, contesta con una línea vacía."
+
+var enc_estado: Int = ENC_NADA
+var enc_tipo: String = ""
+var enc_conv: Conversacion = nil
+var enc_carga: Carga = nil
+var enc_flujo: Flujo = nil
+var enc_vueltas: Int = 0
+var enc_texto: String = ""
+var enc_error: String = ""
+var enc_usadas: [String] = []   # las herramientas que usó, para la vista ("ayuda str_split")
+# lo gastado que aún no ha recogido main (encargo_gasto_*)
+var enc_gasto_entrada: Int = 0
+var enc_gasto_salida: Int = 0
+var enc_gasto_coste: Int = 0
+
+func encargo_en_marcha() -> Bool
+    return enc_estado == ENC_PIDIENDO
+end
+
+func encargo_cancelar()
+    if enc_carga != nil
+        http_cancelar(enc_carga)
+        enc_carga = nil
+    end
+    enc_estado = ENC_NADA
+end
+
+# Empieza un encargo: tipo ("arreglar", "documentar", "cambiar", "prueba", "completar"...) y el texto entero que va al
+# modelo. Si ya hay uno: un "completar" se sustituye; otro, false.
+func encargo_empezar(tipo: String, texto: String, cfg: Config) -> Bool
+    if enc_estado == ENC_PIDIENDO
+        if enc_tipo != "completar"
+            return false
+        end
+        encargo_cancelar()
+    end
+    enc_tipo = tipo
+    enc_texto = ""
+    enc_error = ""
+    enc_vueltas = 0
+    enc_usadas = []
+    if tipo == "completar"
+        enc_conv = conv_nueva(SISTEMA_COMPLETAR)
+        enc_conv.max_tokens = ENC_TOKENS_COMPLETAR
+    else
+        enc_conv = conv_nueva(SISTEMA_CODIGO)
+        herramientas_declarar_lectura(enc_conv)
+    end
+    # la primera línea dice qué encargo es (al modelo no le estorba; el servidor falso de las pruebas lo mira)
+    conv_usuario(enc_conv, "Encargo: " + tipo + "\n" + texto)
+    _enc_pedir(cfg)
+    return true
+end
+
+func _enc_pedir(cfg: Config)
+    enc_flujo = flujo_nuevo()
+    enc_carga = conv_empezar(enc_conv, cfg)
+    enc_estado = ENC_PIDIENDO
+end
+
+# Sigue el encargo: true si acaba de acabar (listo o con error)
+func encargo_avanzar(cfg: Config) -> Bool
+    if enc_estado != ENC_PIDIENDO or enc_carga == nil
+        return false
+    end
+    if not http_avanzar(enc_carga)
+        if conv_con_flujo(cfg)
+            flujo_anadir(enc_flujo, http_flujo_leer(enc_carga))
+        end
+        return false
+    end
+    t = conv_acabar(enc_conv, enc_carga, cfg, enc_flujo)
+    enc_carga = nil
+    enc_gasto_entrada = enc_gasto_entrada + t.entrada
+    enc_gasto_salida = enc_gasto_salida + t.salida
+    enc_gasto_coste = enc_gasto_coste + t.coste
+    if t.error != ""
+        enc_error = t.error
+        enc_estado = ENC_ERROR
+        return true
+    end
+    if t.llamadas.length == 0 or enc_tipo == "completar"
+        enc_texto = t.texto
+        enc_estado = ENC_LISTO
+        return true
+    end
+    enc_vueltas = enc_vueltas + 1
+    for l in t.llamadas
+        if enc_vueltas > ENC_MAX_VUELTAS
+            conv_resultado(enc_conv, l.id, "No se ejecutó: demasiadas vueltas. Contesta ya con lo que tengas.")
+        elif l.nombre == "leer" or l.nombre == "listar" or l.nombre == "buscar" or l.nombre == "ayuda"
+            q = llamada_str(l, "nombre")
+            if q == ""
+                q = llamada_str(l, "buscar")
+            end
+            if q == ""
+                q = llamada_str(l, "fichero")
+            end
+            if q == ""
+                q = llamada_str(l, "cajon")
+            end
+            enc_usadas.push(l.nombre + " " + q)
+            conv_resultado(enc_conv, l.id, herramienta_ejecutar(l))
+        else
+            conv_resultado(enc_conv, l.id, "Error: en un encargo solo se puede leer (leer, listar, buscar, ayuda).")
+        end
+    end
+    _enc_pedir(cfg)
+    return false
+end
+
+# Para ENCARGADO: lo que hay. Una respuesta o un error se dan una vez; después, "nada". La respuesta va tras una
+# línea con las herramientas que usó, separadas por comas ("ayuda str_split, leer Work:a.dash"; vacía si ninguna).
+func encargo_recoger() -> String
+    if enc_estado == ENC_PIDIENDO
+        return "pidiendo"
+    end
+    if enc_estado == ENC_LISTO
+        enc_estado = ENC_NADA
+        u = ""
+        for h in enc_usadas
+            if u != ""
+                u = u + ", "
+            end
+            u = u + str_replace(h, "\n", " ")
+        end
+        return "listo\n" + u + "\n" + enc_texto
+    end
+    if enc_estado == ENC_ERROR
+        enc_estado = ENC_NADA
+        return "error\n" + enc_error
+    end
+    return "nada"
+end

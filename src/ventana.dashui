@@ -56,6 +56,60 @@
       }
     },
     {
+      "name": "PrincipalSencilla",
+      "tr": 200, "title": "Inferencia",
+      "id": 1,
+      "size": [60, 70],
+      "background": [20, 20, 24],
+      "field_colors": [[96, 96, 104], [120, 120, 128], [255, 200, 80]],
+      "menus": [
+        {
+          "tr": 201, "title": "Proyecto",
+          "items": [
+            { "tr": 202, "label": "Conversación nueva", "key": "N", "event": 20 },
+            { "tr": 203, "label": "Abrir conversación...", "key": "O", "event": 22 },
+            { "tr": 204, "label": "Guardar conversación...", "key": "S", "event": 21 },
+            { "tr": 205, "label": "Preferencias...", "key": "P", "event": 23 },
+            { "separator": true },
+            { "tr": 206, "label": "Salir", "key": "Q", "event": 99 }
+          ]
+        }
+      ],
+      "root": {
+        "type": "vgroup",
+        "children": [
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "label", "tr": 207, "text": "Modelo:", "color": [220, 220, 210] },
+              { "type": "string", "name": "modelo", "text": "", "max": 200, "weight": 180 },
+              { "type": "text", "name": "estado", "text": "", "weight": 320, "color": [220, 220, 210] }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "canvas", "name": "conversacion", "min_width": 300, "min_height": 120, "weight": 300 },
+              { "type": "scrollbar", "name": "barra", "vertical": true, "change": 3 }
+            ]
+          },
+          {
+            "type": "hgroup",
+            "children": [
+              { "type": "string", "name": "entrada", "text": "", "max": 2000, "ack": 1, "weight": 400 },
+              {
+                "type": "vgroup",
+                "children": [
+                  { "type": "button", "name": "enviar", "tr": {"label": 208, "help": 222}, "label": "_Enviar", "event": 1, "help": "Return en el texto también lo manda", "background": [44, 44, 52], "color": [220, 220, 210] },
+                  { "type": "button", "name": "parar", "tr": 210, "label": "_Parar", "event": 2, "disabled": true, "background": [44, 44, 52], "color": [220, 220, 210] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "Preferencias",
       "tr": 211, "title": "Inferencia: preferencias",
       "id": 2,

@@ -1,4 +1,4 @@
-; Texts of /home/freemem/Projects/inferencia/src/main.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/inferencia/.worktrees/copiloto/src/main.dash (tools/catalogo.py)
 ;
 MSG_1 (1//)
 Pensando...
@@ -56,6 +56,14 @@ MSG_30 (30//)
 Puertos ARexx
 MSG_31 (31//)
 Herramienta desconocida: 
+MSG_32 (32//)
+Ayuda de Dash: 
+MSG_33 (33//)
+El encargo de Forja falló: 
+MSG_34 (34//)
+Encargo de Forja: 
+MSG_35 (35//)
+Escribe abajo y pulsa Return o Enviar. Proveedor y modelo: Amiga-P.
 MSG_40 (40//)
 Leer 
 MSG_41 (41//)
@@ -138,6 +146,8 @@ MSG_220 (220//)
 _Usar
 MSG_221 (221//)
 _Cancelar
+MSG_222 (222//)
+Return en el texto también lo manda
 MSG_400 (400//)
 too many redirects
 MSG_401 (401//)

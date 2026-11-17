@@ -9,6 +9,9 @@
 #   SIN_PERMISO="entorno,orden echo" tests/usuario.sh ...   # ENV:Inferencia/sin_permiso
 #   OPCIONES=--memcheck tests/usuario.sh ...   # Inferencia compilada con esas opciones de ./dash
 #   PROVEEDOR=anthropic URL=http://127.0.0.1:40900/v1/messages tests/usuario.sh ...   # otro proveedor
+#   AYUDA=~/Projects/FreeMEMLang/build/ayuda/Dash.ayuda tests/usuario.sh ...   # la ayuda de Dash, en DH0:Prueba
+#   SISTEMA=~/.cache/dash-emu/sys32rtg38 RTG=1 tests/usuario.sh ...   # otro sistema (este: AmigaOS 3.2 y MUI 3.8)
+#   ENTRADA=sencilla tests/usuario.sh ...   # la ventana con una línea para escribir (la de MUI 3.8 sin Textinput)
 set -e
 dash=$1; usuario=$2; shift 2
 png=""
@@ -18,8 +21,17 @@ tmp=$(mktemp -d)
 srv=""
 trap '[ -z "$srv" ] || kill $srv 2>/dev/null; rm -rf "$tmp"' EXIT
 "$dash/dash" $OPCIONES "$aqui/src/main.dash" -o "$tmp/Inferencia"
-cp -r "$HOME/.cache/dash-emu/sys31muisslweb" "$tmp/sys"
+maquina=""
+if [ -n "$RTG" ]; then
+  cp -r "${SISTEMA:-$HOME/.cache/dash-emu/sys32rtg8}" "$tmp/sys"
+  export DASH_EMU_SYS_32_RTG="$tmp/sys"
+  export DASH_KICKSTART_32="${DASH_KICKSTART_32:-$HOME/Descargas/Telegram Desktop/Kickstart v3.2.3 A1200.47.115_Pack_noSCSI.rom}"
+  maquina="--machine rtg"
+else
+  cp -r "${SISTEMA:-$HOME/.cache/dash-emu/sys31muisslweb}" "$tmp/sys"
+fi
 mkdir -p "$tmp/sys/Prueba"
+[ -z "$AYUDA" ] || cp "$AYUDA" "$tmp/sys/Prueba/Dash.ayuda"
 [ ! -d "$aqui/tests/prueba" ] || cp -r "$aqui/tests/prueba/." "$tmp/sys/Prueba/"
 "$dash/dash" "$usuario" -o "$tmp/sys/Prueba/Usuario"
 if [ -n "$FORJA" ]; then
@@ -34,6 +46,8 @@ fi
   echo "C:SetEnv Inferencia/clave clave-falsa"
   echo "C:SetEnv Inferencia/modelo modelo/prueba"
   echo "SetEnv INFERENCIA_SONDA 1"
+  [ -z "$AYUDA" ] || echo "C:SetEnv Inferencia/ayuda DH0:Prueba/Dash.ayuda"
+  [ -z "$ENTRADA" ] || echo "C:SetEnv Inferencia/entrada $ENTRADA"
   [ -z "$PERMISO" ] || echo "SetEnv INFERENCIA_PRUEBA_PERMISO $PERMISO"
   [ -z "$SIN_PERMISO" ] || echo "SetEnv Inferencia/sin_permiso \"$SIN_PERMISO\""
   if [ -n "$FORJA" ]; then
@@ -47,5 +61,5 @@ srv=$!
 sleep 1
 shots=""
 for s in "$@"; do shots="$shots --screenshot $s ${png%.png}-$s.png"; done
-python3 "$dash/tools/emu_run.py" --timeout ${TIEMPO:-240} --system "$tmp/sys" --set bsdsocket_library=1 --keep "$tmp/disco" $shots "$tmp/Inferencia" || true
+python3 "$dash/tools/emu_run.py" --timeout ${TIEMPO:-240} $maquina --system "$tmp/sys" --set bsdsocket_library=1 --keep "$tmp/disco" $shots "$tmp/Inferencia" || true
 iconv -f latin1 -t utf-8 "$tmp/disco/Prueba/usuario.txt" 2>/dev/null || echo "FALLO: no hay registro"

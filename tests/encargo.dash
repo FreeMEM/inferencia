@@ -1,0 +1,108 @@
+# Los encargos de Forja (el copiloto) y la herramienta ayuda, por ARexx, contra el servidor falso:
+#   - ENCARGO ayuda: el modelo pide la ficha de str_split a la ayuda de Dash y la recibe (ENCARGADO "listo", con
+#     "ayuda str_split" en la línea de las herramientas);
+#   - ENCARGO ayudamal: un nombre que no está da los parecidos y la búsqueda por palabras da fichas;
+#   - ENCARGO escribir: en un encargo no se puede escribir;
+#   - ENCARGO completar: la sugerencia, sin herramientas; otro completar sustituye al que está en marcha;
+#   - un encargo lento: otro encargo da RC 5; CANCELAR lo corta ("nada");
+#   - la conversación también tiene ayuda (GUION ayuda_chat), y el coste sube con los encargos.
+# Lo arranca tests/usuario.sh con AYUDA=.../Dash.ayuda; anota en DH0:Prueba/usuario.txt.
+
+const INFERENCIA = "INFERENCIA.1"
+
+var fallos: Int = 0
+var registro: String = ""
+
+func anotar(texto: String)
+    registro = registro + texto + "\n"
+    file_write_text("DH0:Prueba/usuario.txt", registro)
+end
+
+func ver(paso: String, cierto: Bool, detalle: String)
+    if cierto
+        anotar("bien: " + paso)
+    else
+        anotar("FALLO: " + paso + ": [" + detalle + "]")
+        fallos = fallos + 1
+    end
+end
+
+func orden(o: String) -> String
+    return rexx_send(INFERENCIA, o)
+end
+
+# Espera a que el encargo acabe: lo que da ENCARGADO ("listo\n...", "error\n...")
+func esperar_encargo() -> String
+    n = 0
+    r = orden("ENCARGADO")
+    while n < 300 and r == "pidiendo"
+        time_delay(10)
+        r = orden("ENCARGADO")
+        n = n + 1
+    end
+    return r
+end
+
+func respuesta() -> String
+    n = 0
+    time_delay(10)
+    while n < 600 and orden("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    return orden("RESPUESTA")
+end
+
+Main
+    n = 0
+    while n < 600 and orden("ESTADO") != "libre"
+        time_delay(10)
+        n = n + 1
+    end
+    ver("el puerto", n < 600, "")
+    ver("sin encargo, nada", orden("ENCARGADO") == "nada", orden("ENCARGADO"))
+
+    orden("ENCARGO ayuda\nUsa la ayuda para str_split.")
+    ver("ENCARGO da RC 0", rexx_rc() == 0, "#{rexx_rc()}")
+    r = esperar_encargo()
+    ls = str_split(r, "\n")
+    ver("ayuda: listo", ls[0] == "listo", r)
+    ver("ayuda: dice la herramienta", ls.length > 1 and ls[1] == "ayuda str_split", r)
+    ver("ayuda: la firma de str_split", str_contains(r, "firma: str_split("), r)
+    ver("ayuda: ya no queda nada", orden("ENCARGADO") == "nada", "")
+
+    orden("ENCARGO ayudamal\nBusca una que no está.")
+    r = esperar_encargo()
+    ver("ayudamal: busca por palabras", str_starts(r, "listo") and str_contains(r, "Fichas donde sale"), r)
+    ver("ayudamal: los parecidos", str_contains(r, "empiezan igual: str_"), r)
+
+    orden("ENCARGO escribir\nIntenta escribir.")
+    r = esperar_encargo()
+    ver("escribir: no se puede", str_contains(r, "solo se puede leer") and not file_exists("RAM:no.txt"), r)
+
+    c0 = str_split(orden("COSTE"), " ")
+    orden("ENCARGO completar\n    Print sal")
+    orden("ENCARGO completar\n    Print sal")
+    ver("completar sustituye al de antes", rexx_rc() == 0, "#{rexx_rc()}")
+    r = esperar_encargo()
+    ver("completar: la sugerencia", r == "listo\n\nudo(\"Copiloto\")", r)
+    c1 = str_split(orden("COSTE"), " ")
+    ver("el coste sube con los encargos", Int(c1[0]) > Int(c0[0]), orden("COSTE"))
+
+    orden("ENCARGO lento\nLENTO: esto llega despacio, a trozos de doce letras, y tarda unos segundos en llegar entero.")
+    time_delay(25)
+    orden("ENCARGO otro\nNo cabe.")
+    ver("otro encargo espera (RC 5)", rexx_rc() == 5, "#{rexx_rc()}")
+    ver("el lento sigue", orden("ENCARGADO") == "pidiendo", "")
+    orden("CANCELAR")
+    ver("CANCELAR lo corta", orden("ENCARGADO") == "nada", "")
+
+    orden("PREGUNTA GUION ayuda_chat")
+    r = respuesta()
+    ver("la conversación también tiene ayuda", str_contains(r, "file_seek("), r)
+
+    orden("QUIT")
+    if fallos == 0
+        anotar("TODO BIEN")
+    end
+end

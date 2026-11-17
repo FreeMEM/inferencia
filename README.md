@@ -12,7 +12,8 @@ castellano o en inglés, según el idioma de las Preferencias de Locale (el cat�
 ## Qué necesita
 
 - AmigaOS 3.0 o mejor, con un 68020 o mejor.
-- MUI 5.
+- MUI 5, o MUI 3.8. Con MUI 3.8, el cuadro para escribir es de una línea (Return manda la pregunta) salvo que esté
+  instalado MCC_Textinput (de Aminet).
 - Una pila TCP/IP (Roadshow, AmiTCP, Miami...) y AmiSSL 5 para HTTPS.
 - El reloj en hora: AmiSSL comprueba las fechas de los certificados.
 - Una clave de [OpenRouter](https://openrouter.ai) o de Anthropic, o un modelo en un PC de tu red (Ollama, LM
@@ -47,12 +48,21 @@ Copia el cajón Inferencia donde quieras. Ábrelo y pulsa Amiga-P para las prefe
 | sistema | Memoria, versión, volúmenes, asignaciones, tareas | No |
 | entorno | Variables de ENV: | Para poner, sí |
 | portapapeles | Lee y escribe el portapapeles | Para escribir, sí |
+| ayuda | Busca en la ayuda de Dash (`DASH:Ayuda/Dash.ayuda`, o `ENV:Inferencia/ayuda`) | No |
 
 Al preguntar, sale "Sí", "No" y "Siempre". "Siempre" lo apunta en `ENVARC:Inferencia/sin_permiso` (separado por
 comas: `orden list,arexx FORJA.1,entorno`), y ya no vuelve a preguntar por eso.
 
 Si [Forja](https://github.com/FreeMEM/forja), el IDE de Dash, tiene abierto el fichero que se cambia, el cambio se
 hace en el editor de Forja: queda sin guardar y se puede deshacer.
+
+### El copiloto de Forja
+
+Forja trae una extensión, Inferencia, que hace de copiloto: explica y arregla errores, documenta funciones, escribe
+pruebas, cambia el código que eliges y, si se encienden, sugiere cómo sigue la línea al escribir. Usa esta Inferencia
+por ARexx (la arranca si no está): lo que va a la conversación sale en esta ventana; lo que cambia código va en un
+encargo aparte (`ENCARGO`), y Forja enseña el cambio para aceptarlo o no. Los encargos pueden leer ficheros y buscar
+en la ayuda de Dash, pero no cambiar nada ni ejecutar órdenes. Cómo se usa: el README de Forja.
 
 ### ARexx
 
@@ -62,6 +72,10 @@ Puerto `INFERENCIA.1`:
 - `RESPUESTA`: la última respuesta, cuando está libre.
 - `CONTEXTO fichero [desde hasta]` y `ADJUNTAR título` (con el texto en las líneas siguientes): van con la siguiente pregunta.
 - `NUEVA`, `MOSTRAR`, `OCULTAR`, `GUARDAR fichero`, `CARGAR fichero`, `COSTE`, `MENSAJES`.
+- `ENCARGO tipo` (con el texto en las líneas siguientes): una petición aparte de la conversación, para el copiloto de
+  Forja (RC 5 si ya hay otra; un `completar` nuevo sustituye al que está en marcha). `ENCARGADO` dice `pidiendo`,
+  `listo` (con las herramientas que usó en la línea siguiente y la respuesta debajo), `error` (y el motivo) o `nada`.
+  `CANCELAR` lo corta.
 
 ## Compilar
 

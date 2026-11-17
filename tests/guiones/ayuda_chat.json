@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["ayuda", {"nombre": "file_seek"}]]},
+  {"texto": "Según la ayuda: {resultado}"}
+]

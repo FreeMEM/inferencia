@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["ayuda", {"nombre": "str_split"}]]},
+  {"texto": "Ficha leída:\n{resultado}"}
+]

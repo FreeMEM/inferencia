@@ -14,6 +14,9 @@ de OpenAI Chat Completions. Sin clave da 401, como el de verdad.
 - "GUION nombre" en la pregunta sigue tests/guiones/<nombre>.json: una lista de turnos, cada uno
   {"llamadas": [["nombre", {argumentos}], ...]} o {"texto": "..."}. El turno es el número de respuestas que
   lleva el modelo desde la última pregunta; en el texto, {resultado} es el contenido del último resultado.
+- Los encargos de Forja (su copiloto) empiezan por "Encargo: tipo": siguen tests/guiones/encargo_<tipo>.json si
+  está (si no, repiten la pregunta, como siempre). La variable INFERENCIA_GUIONES puede dar otro cajón de guiones,
+  que se mira antes (las pruebas del copiloto de Forja traen los suyos).
 
     python3 tests/servidor_falso.py [puerto]      # 40900 por defecto, en 127.0.0.1
 """
@@ -161,10 +164,20 @@ class Falso(BaseHTTPRequestHandler):
         """El guion de la última pregunta y el turno: (turnos, número), o None"""
         ultima = max(i for i, m in enumerate(mensajes) if m["role"] in ("user", "system"))
         texto = mensajes[ultima].get("content") or ""
-        if mensajes[ultima]["role"] != "user" or not texto.startswith("GUION "):
+        if mensajes[ultima]["role"] != "user":
             return None
-        nombre = texto.split()[1]
+        if texto.startswith("GUION "):
+            nombre = texto.split()[1]
+        elif texto.startswith("Encargo: "):
+            nombre = "encargo_" + texto.split("\n")[0].split()[1]
+        else:
+            return None
         ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guiones", nombre + ".json")
+        otro = os.path.join(os.environ.get("INFERENCIA_GUIONES", ""), nombre + ".json")
+        if os.environ.get("INFERENCIA_GUIONES") and os.path.exists(otro):
+            ruta = otro
+        if not os.path.exists(ruta) and nombre.startswith("encargo_"):
+            return None
         with open(ruta, encoding="utf-8") as f:
             turnos = json.load(f)
         hechos = sum(1 for m in mensajes[ultima + 1:] if m["role"] == "assistant")

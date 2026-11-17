@@ -24,6 +24,13 @@ el programa a la vez que Inferencia (con `ENV:INFERENCIA_SONDA`) y enseña lo qu
   URL=http://127.0.0.1:40900/ollama/v1/chat/completions` (sin clave, como Ollama).
 - `tests/preferencias.dash`: abre la ventana de preferencias con Amiga-P (para la captura).
 - `tests/flujo.dash`: la respuesta según llega ("MARKDOWN LENTO": el servidor falso la manda en trozos lentos).
+- `tests/encargo.dash` (con `AYUDA=~/Projects/FreeMEMLang/build/ayuda/Dash.ayuda`, de `tools/gen_ayuda.py` de Dash): los
+  encargos del copiloto de Forja por ARexx (`ENCARGO`, `ENCARGADO`, `CANCELAR`), la herramienta ayuda en un encargo y
+  en la conversación, que un encargo no puede escribir y que un `completar` sustituye al de antes. Los guiones
+  `encargo_<tipo>.json` contestan a los encargos ("Encargo: tipo" en la primera línea). La prueba del copiloto con
+  Forja entera está en Forja: `tests/copiloto.sh`.
+- `ENTRADA=sencilla`: la ventana con una línea para escribir, la de MUI 3.8 sin Textinput. `SISTEMA=... RTG=1`: otro
+  sistema, como `~/.cache/dash-emu/sys32rtg38` (AmigaOS 3.2 con MUI 3.8).
 - `tests/varias.dash`: una pregunta de dos líneas (Return) mandada con Amiga+Return.
 - `OPCIONES=--memcheck`: Inferencia compilada con comprobación de memoria (los avisos salen al final).
 - `tests/juntos.dash` (con `PERMISO=Si` y `FORJA=~/Projects/forja`, que arranca Forja a la vez): Inferencia edita
