@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["ayuda", {"nombre": "str_partir", "buscar": "partir texto"}]]},
+  {"texto": "Búsqueda:\n{resultado}"}
+]

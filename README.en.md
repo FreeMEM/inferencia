@@ -13,7 +13,8 @@ window and menus in this README are named in Spanish; in English they read Provi
 ## Requirements
 
 - AmigaOS 3.0 or later, with a 68020 or better.
-- MUI 5.
+- MUI 5, or MUI 3.8. With MUI 3.8 the input box is a single line (Return sends the question) unless MCC_Textinput
+  (from Aminet) is installed.
 - A TCP/IP stack (Roadshow, AmiTCP, Miami...) and AmiSSL 5 for HTTPS.
 - The clock set right: AmiSSL checks the certificate dates.
 - An [OpenRouter](https://openrouter.ai) or Anthropic key, or a model on a PC in your network (Ollama, LM Studio),
@@ -48,6 +49,7 @@ Copy the Inferencia drawer anywhere. Open it and press Amiga-P for the preferenc
 | sistema | Memory, version, volumes, assigns, tasks | No |
 | entorno | ENV: variables | To set, yes |
 | portapapeles | Reads and writes the clipboard | To write, yes |
+| ayuda | Searches the Dash help (`DASH:Ayuda/Dash.ayuda`, or `ENV:Inferencia/ayuda`) | No |
 
 When it asks, you get "Sí" (yes), "No" and "Siempre" (always). "Siempre" writes it to
 `ENVARC:Inferencia/sin_permiso` (comma separated: `orden list,arexx FORJA.1,entorno`), and it won't ask about that
@@ -55,6 +57,14 @@ again.
 
 If [Forja](https://github.com/FreeMEM/forja), the Dash IDE, has the file open, the change is made in Forja's
 editor: unsaved, and it can be undone.
+
+### Forja's copilot
+
+Forja comes with an extension, Inferencia, that acts as a copilot: it explains and fixes compile errors, documents
+functions, writes tests, changes the code you select and, if switched on, suggests how the line goes on as you type.
+It uses this Inferencia through ARexx (and starts it if needed): what goes to the conversation shows in this window;
+what changes code goes in a separate job (`ENCARGO`), and Forja shows the change so you accept it or not. Those jobs
+can read files and search the Dash help, but cannot change anything or run commands. How to use it: Forja's README.
 
 ### ARexx
 
@@ -65,6 +75,10 @@ Port `INFERENCIA.1`:
 - `CONTEXTO file [from to]` and `ADJUNTAR title` (with the text on the following lines): go with the next question.
 - `NUEVA` (new), `MOSTRAR` (show), `OCULTAR` (hide), `GUARDAR file` (save), `CARGAR file` (load), `COSTE` (cost),
   `MENSAJES` (message count).
+- `ENCARGO type` (with the text on the following lines): a request apart from the conversation, for Forja's copilot
+  (RC 5 if there is another one; a new `completar` replaces the running one). `ENCARGADO` says `pidiendo` (asking),
+  `listo` (done: the tools it used on the next line and the answer below), `error` (and why) or `nada` (nothing).
+  `CANCELAR` stops it.
 
 ## Build
 

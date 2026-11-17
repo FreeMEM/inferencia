@@ -13,6 +13,12 @@
 # líneas siguientes) también; NUEVA, MOSTRAR y OCULTAR; GUARDAR fichero y CARGAR fichero (la conversación, en JSON);
 # COSTE ("tokens_de_entrada tokens_de_salida millonésimas_de_dólar"); MENSAJES (cuántos lleva).
 #
+# Los encargos de Forja (su copiloto, encargos.dash): ENCARGO tipo, con el texto en las líneas siguientes, empieza una
+# petición aparte de la conversación (RC 5 si ya hay otra); ENCARGADO dice "pidiendo", "listo" (con las herramientas
+# que usó en la línea siguiente y la respuesta debajo), "error" (con el motivo) o "nada"; CANCELAR la corta.
+#
+# Con el argumento DETRAS (el copiloto de Forja la arranca así), la ventana se abre detrás, sin el teclado.
+#
 # Preferencias (Amiga-P): proveedor, dirección, clave, modelo y tope; Usar las deja hasta reiniciar, Guardar también
 # en ENVARC:.
 #
@@ -37,6 +43,7 @@
 import "config.dash"
 import "openrouter.dash"
 import "herramientas.dash"
+import "encargos.dash"
 import "vista.dash"
 import "ventana.dashui"
 
@@ -437,9 +444,30 @@ func parar()
     refrescar()
 end
 
+# Sigue el encargo de Forja, si hay uno; lo gastado va a la cuenta
+func avanzar_encargo()
+    acabado = encargo_avanzar(cfg)
+    if enc_gasto_entrada + enc_gasto_salida + enc_gasto_coste > 0
+        tokens_entrada = tokens_entrada + enc_gasto_entrada
+        tokens_salida = tokens_salida + enc_gasto_salida
+        coste = coste + enc_gasto_coste
+        enc_gasto_entrada = 0
+        enc_gasto_salida = 0
+        enc_gasto_coste = 0
+        if estado == LIBRE
+            poner_estado(LIBRE)
+        end
+    end
+    if acabado and enc_tipo != "completar" and enc_estado == ENC_ERROR
+        vista_anadir(QUIEN_AVISO, tr(33, "El encargo de Forja falló: ") + enc_error)
+        refrescar()
+    end
+end
+
 # El tic de siempre: rápido mientras pasa algo
 func tic()
     avanzar()
+    avanzar_encargo()
     if estado == PERMISO and prueba_permiso != ""
         tics_permiso = tics_permiso - 1
         if tics_permiso == 0
@@ -462,7 +490,7 @@ func tic()
             end
         end
     end
-    if estado != LIBRE
+    if estado != LIBRE or encargo_en_marcha()
         mui_timer(TIC_MS, EV_TIC)
     else
         mui_timer(TIC_QUIETO_MS, EV_TIC)
@@ -730,6 +758,29 @@ func orden_rexx(linea: String) -> String
             mui_rexx_fail(10)
         end
         return ""
+    elif orden == "ENCARGO"
+        # "ENCARGO tipo" y el texto en las líneas siguientes (lo manda el copiloto de Forja)
+        p = str_find(linea, "\n")
+        tipo = str_lower(str_trim(primera[7:]))
+        if p < 0 or tipo == ""
+            mui_rexx_fail(10)
+            return ""
+        end
+        if not encargo_empezar(tipo, linea[p + 1:], cfg)
+            mui_rexx_fail(5)
+            return ""
+        end
+        if tipo != "completar"
+            vista_anadir(QUIEN_HERRAMIENTA, tr(34, "Encargo de Forja: ") + tipo)
+            refrescar()
+        end
+        # (el tic de ahora, a lo sumo en TIC_QUIETO_MS, pasa a ir rápido)
+        return ""
+    elif orden == "ENCARGADO"
+        return encargo_recoger()
+    elif orden == "CANCELAR"
+        encargo_cancelar()
+        return ""
     elif orden == "COSTE"
         return "#{tokens_entrada} #{tokens_salida} #{coste}"
     elif orden == "MENSAJES"
@@ -742,13 +793,34 @@ func orden_rexx(linea: String) -> String
     return ""
 end
 
+# El cuadro de escribir de varias líneas es Textinput: viene con MUI 4 y 5; con MUI 3.8, solo si se instaló
+# MCC_Textinput. Sin él, la ventana va con una línea (Return la manda). ENV:Inferencia/entrada = sencilla la pide así.
+func entrada_varias_lineas() -> Bool
+    if str_lower(env_get("Inferencia/entrada")) == "sencilla"
+        return false
+    end
+    if library_version("muimaster.library") >= 20
+        return true
+    end
+    dos_requesters(false)
+    hay = file_exists("MUI:Libs/mui/Textinputscroll.mcc") or file_exists("LIBS:mui/Textinputscroll.mcc")
+    dos_requesters(true)
+    return hay
+end
+
 Main
     cfg = config_leer()
     app = mui_app_begin("Inferencia", "INFERENCIA")
     if app == 0
         Print "Inferencia necesita MUI y un 68020 o mejor."
     else
-        v = Principal_create()
+        if entrada_varias_lineas()
+            v = Principal_create()
+        else
+            # sin Textinput (MUI 3.8 sin MCC_Textinput): la ventana con una línea para escribir
+            s = PrincipalSencilla_create()
+            v = Principal(s.window, s.modelo, s.estado, s.conversacion, s.barra, s.entrada, s.enviar, s.parar)
+        end
         pref = Preferencias_create()
         mui_set_text(v.modelo, cfg.modelo)
         mui_canvas_on_draw(v.conversacion, dibujar)
@@ -758,9 +830,18 @@ Main
         permisos_leer()
         conv = conv_nueva(SISTEMA)
         herramientas_declarar(conv)
-        vista_anadir(QUIEN_AVISO, tr(24, "Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P."))
-        mui_window_open(v.window)
-        mui_set_active(v.window, v.entrada)
+        if entrada_varias_lineas()
+            vista_anadir(QUIEN_AVISO, tr(24, "Escribe abajo (Return: otra línea) y pulsa Enviar o Amiga+Return. Proveedor y modelo: Amiga-P."))
+        else
+            vista_anadir(QUIEN_AVISO, tr(35, "Escribe abajo y pulsa Return o Enviar. Proveedor y modelo: Amiga-P."))
+        end
+        if arg_count() >= 1 and str_upper(arg(0)) == "DETRAS"
+            # (la arranca el copiloto de Forja: la ventana, detrás, sin quitarle el teclado a Forja)
+            mui_window_open_back(v.window)
+        else
+            mui_window_open(v.window)
+            mui_set_active(v.window, v.entrada)
+        end
         sonda = env_get("INFERENCIA_SONDA") != ""
         poner_estado(LIBRE)
         ajustar_barra()
@@ -785,6 +866,7 @@ Main
                 tic()
             elif ev == 0
                 avanzar()
+                avanzar_encargo()
             elif ev == EV_ENVIAR
                 texto = str_trim(mui_get_text(v.entrada))
                 if texto != "" and estado == LIBRE
@@ -832,6 +914,7 @@ Main
                 publicar_sonda()
             end
         end
+        encargo_cancelar()
         if estado == PIDIENDO and carga != nil
             http_cancelar(carga)
         elif estado == ORDEN

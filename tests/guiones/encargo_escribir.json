@@ -1,0 +1,4 @@
+[
+  {"llamadas": [["escribir", {"fichero": "RAM:no.txt", "contenido": "no"}]]},
+  {"texto": "Escribir: {resultado}"}
+]

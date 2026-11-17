@@ -22,6 +22,7 @@ const ESPERA_PETICION = 300000
 struct Conversacion
     mensajes: Json        # la lista de mensajes, tal como va a la API
     herramientas: Json    # la lista de herramientas (formato "function")
+    max_tokens: Int = 0   # el tope de la respuesta (0: el del proveedor; con Anthropic, ANTH_MAX_TOKENS)
 end
 
 struct Llamada
@@ -108,6 +109,9 @@ func _conv_cuerpo_flujo(c: Conversacion, modelo: String, flujo: Bool) -> String
         json_set(p, "stream_options", so)
     end
     json_set(p, "messages", c.mensajes)
+    if c.max_tokens > 0
+        json_set_int(p, "max_tokens", c.max_tokens)
+    end
     # que OpenRouter diga lo que cuesta cada petición (usage.cost)
     u = json_object()
     json_set_bool(u, "include", true)
@@ -169,7 +173,11 @@ end
 func _anth_cuerpo(c: Conversacion, modelo: String) -> String
     p = json_object()
     json_set_str(p, "model", modelo)
-    json_set_int(p, "max_tokens", ANTH_MAX_TOKENS)
+    if c.max_tokens > 0
+        json_set_int(p, "max_tokens", c.max_tokens)
+    else
+        json_set_int(p, "max_tokens", ANTH_MAX_TOKENS)
+    end
     mensajes = json_array()
     n = json_length(c.mensajes)
     i = 0

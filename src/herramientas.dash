@@ -1,7 +1,8 @@
-# Las herramientas que el modelo puede pedir: leer, listar, buscar, escribir, editar, orden, puertos, arexx, sistema,
-# entorno y portapapeles.
+# Las herramientas que el modelo puede pedir: leer, listar, buscar, ayuda, escribir, editar, orden, puertos, arexx,
+# sistema, entorno y portapapeles.
 #
 #   herramientas_declarar(conv)                # una vez, al empezar la conversación
+#   herramientas_declarar_lectura(conv)        # solo las que no cambian nada (los encargos de Forja)
 #   if herramienta_pide_permiso(l) ...         # escribir, editar, orden, arexx, poner en entorno y escribir en el
 #                                              # portapapeles, salvo lo de ENV:Inferencia/sin_permiso
 #   vista_anadir(QUIEN_HERRAMIENTA, herramienta_resumen(l))
@@ -12,6 +13,7 @@
 # y entran en su deshacer.
 
 import "openrouter.dash"
+import "lib/ayuda.dash"
 
 const TOPE_LEER = 20000         # caracteres de un fichero
 const TOPE_SALIDA = 8000        # caracteres de la salida de una orden
@@ -22,14 +24,22 @@ const TOPE_TAMANO_BUSCAR = 200000
 const TOPE_SEGUNDOS = 120       # una orden, como mucho
 const PUERTO_PROPIO = "INFERENCIA.1"
 const PUERTO_FORJA = "FORJA.1"
+const TOPE_AYUDA = 6000        # caracteres de una ficha de la ayuda de Dash
+const AYUDA_DEFECTO = "DASH:Ayuda/Dash.ayuda"
 
 # Lo aceptado con "Siempre": nombres de herramienta ("escribir", "editar") y, para orden, la primera palabra
 var permitidos: [String] = []
 
-func herramientas_declarar(c: Conversacion)
+# Las que solo leen: leer, listar, buscar y ayuda
+func herramientas_declarar_lectura(c: Conversacion)
     conv_herramienta(c, "leer", "Lee un fichero de texto. Con desde y hasta, solo esas líneas (desde 1).", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\",\"description\":\"Ruta de AmigaOS, como S:Startup-Sequence\"},\"desde\":{\"type\":\"integer\"},\"hasta\":{\"type\":\"integer\"}},\"required\":[\"fichero\"]}")
     conv_herramienta(c, "listar", "Lista lo que hay en un cajón (directorio): los cajones acaban en /, los ficheros llevan su tamaño.", "{\"type\":\"object\",\"properties\":{\"cajon\":{\"type\":\"string\",\"description\":\"Ruta de AmigaOS, como SYS: o Work:Proyectos\"}},\"required\":[\"cajon\"]}")
     conv_herramienta(c, "buscar", "Busca un texto (sin mirar mayúsculas) en los ficheros de un cajón y de los cajones de dentro. Da fichero, línea y texto de cada línea que lo tiene.", "{\"type\":\"object\",\"properties\":{\"cajon\":{\"type\":\"string\"},\"texto\":{\"type\":\"string\"}},\"required\":[\"cajon\",\"texto\"]}")
+    conv_herramienta(c, "ayuda", "Busca en la ayuda de Dash, el lenguaje de Forja. Con nombre, la ficha de una función (su firma, qué hace, sus argumentos y un ejemplo), de un grupo de funciones o de una palabra del lenguaje (if, struct, eventloop...). Con buscar, las fichas donde salen esas palabras. Úsala antes de escribir una función de Dash de la que no estés seguro: no te inventes funciones.", "{\"type\":\"object\",\"properties\":{\"nombre\":{\"type\":\"string\",\"description\":\"Como str_split, mui_window_begin o while\"},\"buscar\":{\"type\":\"string\",\"description\":\"Unas palabras, como leer fichero\"}}}")
+end
+
+func herramientas_declarar(c: Conversacion)
+    herramientas_declarar_lectura(c)
     conv_herramienta(c, "escribir", "Crea un fichero o lo sustituye entero por el contenido. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"}},\"required\":[\"fichero\",\"contenido\"]}")
     conv_herramienta(c, "editar", "Cambia en un fichero un trozo exacto de texto por otro. El trozo tiene que estar una sola vez; si no, da error. El usuario tiene que permitirlo.", "{\"type\":\"object\",\"properties\":{\"fichero\":{\"type\":\"string\"},\"buscar\":{\"type\":\"string\",\"description\":\"El texto que hay ahora, exacto\"},\"cambiar\":{\"type\":\"string\",\"description\":\"El texto nuevo\"}},\"required\":[\"fichero\",\"buscar\",\"cambiar\"]}")
     conv_herramienta(c, "puertos", "Lista los puertos ARexx y públicos abiertos: con ellos se sabe a qué programas se les puede mandar órdenes con la herramienta arexx.", "{\"type\":\"object\",\"properties\":{}}")
@@ -116,6 +126,12 @@ func herramienta_resumen(l: Llamada) -> String
         return tr(41, "Listar ") + llamada_str(l, "cajon")
     elif l.nombre == "buscar"
         return hueco2(tr(42, "Buscar \"%1\" en %2"), llamada_str(l, "texto"), llamada_str(l, "cajon"))
+    elif l.nombre == "ayuda"
+        q = llamada_str(l, "nombre")
+        if q == ""
+            q = llamada_str(l, "buscar")
+        end
+        return tr(32, "Ayuda de Dash: ") + q
     elif l.nombre == "orden"
         return tr(43, "Orden: ") + llamada_str(l, "orden")
     elif l.nombre == "sistema"
@@ -392,6 +408,144 @@ func _editar(l: Llamada) -> String
     return "Cambiado: " + fichero
 end
 
+# --- La ayuda de Dash (DASH:Ayuda/Dash.ayuda, o ENV:Inferencia/ayuda), leída a trozos con lib/ayuda.dash ---
+
+func ruta_ayuda() -> String
+    r = env_get("Inferencia/ayuda")
+    if r == ""
+        r = AYUDA_DEFECTO
+    end
+    return r
+end
+
+# Una ficha como texto llano: el título, la firma, el texto, el código con sangría y "Ver también"
+func _ficha_llana(a: Ayuda, id: Int) -> String
+    r = ""
+    ver = ""
+    for linea in ayuda_ficha(a, id)
+        if linea == ""
+            r = r + "\n"
+            continue
+        end
+        c = linea[0:1]
+        resto = linea[1:]
+        if c == "@"
+            p = str_find(resto, " ")
+            r = r + "# " + resto[p + 3:] + " (" + resto[0:p] + ")\n"
+        elif c == "%"
+            p = str_find(resto, " ")
+            if p > 0 and (resto[0:p] == "firma" or resto[0:p] == "devuelve")
+                r = r + resto[0:p] + ": " + resto[p + 1:] + "\n"
+            end
+        elif c == "#"
+            r = r + "## " + resto + "\n"
+        elif c == "|"
+            r = r + "    " + resto + "\n"
+        elif c == "*"
+            p = str_find(resto, " ")
+            if p > 0
+                ver = ver + " " + resto[0:p]
+            end
+        else
+            r = r + str_trim(resto) + "\n"
+        end
+    end
+    if ver != ""
+        r = r + "Ver también:" + ver + "\n"
+    end
+    return _cortar(r, TOPE_AYUDA)
+end
+
+# Las fichas donde salen las palabras de q (las mejores primero), como mucho n. Las palabras que no están en el
+# índice (las muy comunes, como "texto", tampoco están) no cuentan, ni las que dejarían la lista vacía.
+func _ayuda_buscar_palabras(a: Ayuda, q: String, n: Int) -> String
+    var ids: [Int] = []
+    for p in str_split(ayuda_plegar(q), " ")
+        if p.length < 3
+            continue
+        end
+        estas = ayuda_palabra(a, p)
+        if estas.length == 0
+            continue
+        end
+        if ids.length == 0
+            ids = estas
+        else
+            var juntas: [Int] = []
+            for i in ids
+                if i in estas
+                    juntas.push(i)
+                end
+            end
+            if juntas.length > 0
+                ids = juntas
+            end
+        end
+    end
+    r = ""
+    k = 0
+    for i in ids
+        if k == n
+            r = r + "[y #{ids.length - n} más]\n"
+            break
+        end
+        r = r + ayuda_clave(a, i) + ": " + ayuda_titulo(a, i) + "\n"
+        k = k + 1
+    end
+    return r
+end
+
+func _ayuda(l: Llamada) -> String
+    nombre = str_trim(llamada_str(l, "nombre"))
+    buscar = str_trim(llamada_str(l, "buscar"))
+    if nombre == "" and buscar == ""
+        return "Error: di nombre (una función o palabra de Dash) o buscar (unas palabras)"
+    end
+    # (sin el volumen DASH:, sin la petición de "inserta el volumen")
+    dos_requesters(false)
+    a = ayuda_abrir(ruta_ayuda())
+    dos_requesters(true)
+    if a == nil
+        return "Error: no está la ayuda de Dash (" + ruta_ayuda() + "). Viene en el paquete de Dash para el Amiga; ENV:Inferencia/ayuda dice dónde está."
+    end
+    r = ""
+    if nombre != ""
+        id = ayuda_buscar(a, nombre)
+        if id >= 0
+            r = _ficha_llana(a, id)
+        else
+            r = "No hay ninguna función ni palabra de Dash que se llame " + nombre + ".\n"
+            # las palabras que empiezan como él, cada vez con una letra menos (str_partir: str_parti... str_)
+            pre = str_trim(ayuda_plegar(nombre))
+            parecidas = ayuda_prefijo(a, pre, 12)
+            while parecidas.length == 0 and pre.length > 3
+                pre = pre[0:pre.length - 1]
+                parecidas = ayuda_prefijo(a, pre, 12)
+            end
+            if parecidas.length > 0
+                r = r + "Palabras que empiezan igual:"
+                for p in parecidas
+                    r = r + " " + p
+                end
+                r = r + "\n"
+            end
+            if buscar == ""
+                buscar = nombre
+            end
+        end
+    end
+    if buscar != "" and (nombre == "" or ayuda_buscar(a, nombre) < 0)
+        hallado = _ayuda_buscar_palabras(a, buscar, 15)
+        if hallado == ""
+            r = r + "Ninguna ficha tiene esas palabras: " + buscar + "\n"
+        else
+            r = r + "Fichas donde sale \"" + buscar + "\" (pide una con nombre):\n" + hallado
+        end
+    end
+    ayuda_cerrar(a)
+    return r
+end
+
 func _version_os() -> String
     v = library_version("exec.library")
     if v >= 47
@@ -546,6 +700,8 @@ func herramienta_ejecutar(l: Llamada) -> String
         return _listar(l)
     elif l.nombre == "buscar"
         return _buscar(l)
+    elif l.nombre == "ayuda"
+        return _ayuda(l)
     elif l.nombre == "escribir"
         return _escribir(l)
     elif l.nombre == "editar"
