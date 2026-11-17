@@ -320,3 +320,17 @@ Todas las tareas del bucle hechas. Lo que queda para publicar está en docs/PUBL
 - 2026-10-30: pieza 24 cerrada. Con Dash 2e972f6, Forja redibujando dentro de la orden ARexx (sin
   `redibujar_luego`) pasa rexx.sh y buscar.sh 4 veces cada una, y teclas.sh y diseno.sh. Probablemente era la
   pieza 23 (el temporal del RESULT liberado antes de tiempo); no se probó con el Dash viejo para confirmarlo.
+
+- 2026-11-17, rama `copiloto` (FORJA_LOOP 1.6 de Forja): Inferencia hace de copiloto de Forja. La extensión de Forja
+  (`extensiones/Inferencia` de Forja) es un programa pequeño que le habla por ARexx; aquí, lo que necesita:
+  - `ENCARGO tipo` (el texto debajo), `ENCARGADO` y `CANCELAR`: una petición aparte de la conversación
+    (`src/encargos.dash`), con las herramientas que solo leen (leer, listar, buscar, ayuda) sin preguntar, hasta 6
+    vueltas. Un `completar` (la sugerencia al escribir) va sin herramientas, con 80 tokens como mucho, y sustituye al
+    que esté en marcha. El gasto va a la cuenta de la ventana.
+  - Herramienta `ayuda` (también en la conversación): la ficha de una función o las fichas de unas palabras de la
+    ayuda de Dash (`DASH:Ayuda/Dash.ayuda`, de `tools/gen_ayuda.py`; `ENV:Inferencia/ayuda`), con `lib/ayuda.dash`.
+  - MUI 3.8: la ventana salía sin cuadro para escribir (Textinput no está en MUI 3.8). Sin Textinput, ahora va con
+    una línea (`PrincipalSencilla` en `ventana.dashui`). Probado en FS-UAE con `sys32rtg38`.
+  - Argumento `DETRAS`: la ventana se abre detrás (el copiloto la arranca así).
+  - Pruebas en FS-UAE, TODO BIEN: `tests/encargo.dash` (nueva), clics, arexx, flujo, juntos (con la Forja de la rama) y
+    sistema. La prueba de todo junto es `tests/copiloto.sh` de Forja.
